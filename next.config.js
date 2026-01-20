@@ -6,6 +6,8 @@ const nextConfig = {
     // Disable static page generation for all pages
     experimental: {
         // This helps avoid memory issues during build
+        // Disable the requirement to wrap useSearchParams in Suspense
+        missingSuspenseWithCSRBailout: false,
     },
 
     // Increase memory limit and timeout
