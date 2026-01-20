@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
         if (search) {
             where.OR = [
                 { tenant: { fullName: { contains: search } } },
-                { tenant: { email: { contains: search } } },
+                { tenant: { user: { email: { contains: search } } } },
                 { unit: { property: { name: { contains: search } } } },
             ];
         }
@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
                 where,
                 include: {
                     tenant: {
-                        select: { fullName: true, email: true },
+                        select: { fullName: true, user: { select: { email: true } } },
                     },
                     unit: {
                         select: {
