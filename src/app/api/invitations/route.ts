@@ -120,8 +120,8 @@ export async function POST(request: NextRequest) {
             }
         });
 
-        // Generate invitation link
-        const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+        // Generate invitation link (remove trailing slash to avoid double slashes)
+        const baseUrl = (process.env.NEXTAUTH_URL || 'http://localhost:3000').replace(/\/+$/, '');
         const invitationLink = `${baseUrl}/invite/${invitation.token}`;
 
         return NextResponse.json({
