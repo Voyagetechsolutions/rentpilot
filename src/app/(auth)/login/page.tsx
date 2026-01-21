@@ -58,9 +58,9 @@ export default function LoginPage() {
                 <div>
                     <Link href="/" className="flex items-center gap-3">
                         <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500 to-teal-600 flex items-center justify-center">
-                            <span className="text-white font-bold text-xl">R</span>
+                            <span className="text-white font-bold text-xl">N</span>
                         </div>
-                        <span className="font-bold text-2xl text-white">RentPilot</span>
+                        <span className="font-bold text-2xl text-white">Nook</span>
                     </Link>
                 </div>
 
@@ -77,7 +77,7 @@ export default function LoginPage() {
                 </div>
 
                 <div className="text-gray-500 text-sm">
-                    © 2026 RentPilot. All rights reserved.
+                    © 2026 Nook. All rights reserved.
                 </div>
             </div>
 
@@ -88,9 +88,9 @@ export default function LoginPage() {
                     <div className="lg:hidden mb-8 text-center">
                         <Link href="/" className="inline-flex items-center gap-3">
                             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500 to-teal-600 flex items-center justify-center">
-                                <span className="text-white font-bold text-xl">R</span>
+                                <span className="text-white font-bold text-xl">N</span>
                             </div>
-                            <span className="font-bold text-2xl text-white">RentPilot</span>
+                            <span className="font-bold text-2xl text-white">Nook</span>
                         </Link>
                     </div>
 

@@ -26,14 +26,14 @@ export default function LandingPage() {
                 <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-teal-600 flex items-center justify-center">
-                            <span className="text-white font-bold text-lg">R</span>
+                            <span className="text-white font-bold text-lg">N</span>
                         </div>
-                        <span className="font-bold text-xl text-gray-900">RentPilot</span>
+                        <span className="font-bold text-xl text-gray-900">Nook</span>
                     </div>
 
                     <div className="hidden md:flex items-center gap-8">
                         <a href="#features" className="text-gray-600 hover:text-gray-900 transition">Features</a>
-                        <a href="#why-rentpilot" className="text-gray-600 hover:text-gray-900 transition">Why RentPilot</a>
+                        <a href="#why-nook" className="text-gray-600 hover:text-gray-900 transition">Why Nook</a>
                         <a href="#how-it-works" className="text-gray-600 hover:text-gray-900 transition">How It Works</a>
                         <a href="#testimonials" className="text-gray-600 hover:text-gray-900 transition">Testimonials</a>
                     </div>
@@ -67,7 +67,7 @@ export default function LandingPage() {
                         </h1>
 
                         <p className="text-xl text-gray-600 mb-10 max-w-2xl mx-auto leading-relaxed">
-                            The all-in-one property management platform that simplifies rent collection, tenant communication, 
+                            The all-in-one property management platform that simplifies rent collection, tenant communication,
                             maintenance tracking, and document organization — so you can focus on growing your portfolio.
                         </p>
 
@@ -154,7 +154,7 @@ export default function LandingPage() {
                             <span className="bg-gradient-to-r from-cyan-500 to-teal-600 bg-clip-text text-transparent">Manage Properties Effortlessly</span>
                         </h2>
                         <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-                            From tracking rent payments to handling maintenance requests, RentPilot provides 
+                            From tracking rent payments to handling maintenance requests, Nook provides
                             all the tools you need to run your rental business efficiently.
                         </p>
                     </div>
@@ -180,8 +180,8 @@ export default function LandingPage() {
                 </div>
             </section>
 
-            {/* Why RentPilot Section */}
-            <section id="why-rentpilot" className="py-24 px-6 bg-gradient-to-br from-gray-900 to-gray-800">
+            {/* Why Nook Section */}
+            <section id="why-nook" className="py-24 px-6 bg-gradient-to-br from-gray-900 to-gray-800">
                 <div className="max-w-7xl mx-auto">
                     <div className="grid lg:grid-cols-2 gap-16 items-center">
                         <div>
@@ -191,10 +191,10 @@ export default function LandingPage() {
                             </div>
                             <h2 className="text-3xl md:text-5xl font-bold text-white mb-6">
                                 Why Landlords <br />
-                                <span className="bg-gradient-to-r from-cyan-400 to-teal-400 bg-clip-text text-transparent">Love RentPilot</span>
+                                <span className="bg-gradient-to-r from-cyan-400 to-teal-400 bg-clip-text text-transparent">Love Nook</span>
                             </h2>
                             <p className="text-xl text-gray-300 mb-8 leading-relaxed">
-                                We built RentPilot to solve the real challenges landlords face every day. 
+                                We built Nook to solve the real challenges landlords face every day.
                                 No more spreadsheets, no more chasing tenants, no more paperwork headaches.
                             </p>
 
@@ -259,7 +259,7 @@ export default function LandingPage() {
                             Get Started in <span className="bg-gradient-to-r from-cyan-500 to-teal-600 bg-clip-text text-transparent">3 Easy Steps</span>
                         </h2>
                         <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-                            Setting up RentPilot takes just minutes. No technical knowledge required.
+                            Setting up Nook takes just minutes. No technical knowledge required.
                         </p>
                     </div>
 
@@ -298,25 +298,25 @@ export default function LandingPage() {
                             Loved by Landlords <span className="bg-gradient-to-r from-cyan-500 to-teal-600 bg-clip-text text-transparent">Everywhere</span>
                         </h2>
                         <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-                            Don't just take our word for it. Here's what property owners say about RentPilot.
+                            Don't just take our word for it. Here's what property owners say about Nook.
                         </p>
                     </div>
 
                     <div className="grid md:grid-cols-3 gap-8">
                         {[
-                            { 
-                                quote: "RentPilot has completely transformed how I manage my 12 properties. What used to take me hours now takes minutes. The tenant portal alone has saved me countless phone calls.",
+                            {
+                                quote: "Nook has completely transformed how I manage my 12 properties. What used to take me hours now takes minutes. The tenant portal alone has saved me countless phone calls.",
                                 name: 'Sarah Johnson',
                                 role: 'Property Owner, 12 Units',
                                 avatar: 'SJ'
                             },
-                            { 
-                                quote: "As someone who manages properties remotely, RentPilot has been a game-changer. I can handle everything from my phone, and the automated rent reminders have improved my collection rate by 30%.",
+                            {
+                                quote: "As someone who manages properties remotely, Nook has been a game-changer. I can handle everything from my phone, and the automated rent reminders have improved my collection rate by 30%.",
                                 name: 'Michael Chen',
                                 role: 'Real Estate Investor, 25 Units',
                                 avatar: 'MC'
                             },
-                            { 
+                            {
                                 quote: "Finally, a property management tool that's actually easy to use! The maintenance tracking feature keeps everyone in the loop, and my tenants love the transparency.",
                                 name: 'Emily Williams',
                                 role: 'Landlord, 8 Units',
@@ -353,7 +353,7 @@ export default function LandingPage() {
                         Property Management?
                     </h2>
                     <p className="text-xl text-cyan-100 mb-10 max-w-2xl mx-auto">
-                        Join thousands of landlords who have transformed their rental business with RentPilot. 
+                        Join thousands of landlords who have transformed their rental business with Nook.
                         Start your free trial today — no credit card required.
                     </p>
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -381,16 +381,16 @@ export default function LandingPage() {
                         <div className="md:col-span-2">
                             <div className="flex items-center gap-3 mb-4">
                                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-teal-600 flex items-center justify-center">
-                                    <span className="text-white font-bold text-lg">R</span>
+                                    <span className="text-white font-bold text-lg">N</span>
                                 </div>
-                                <span className="font-bold text-xl text-white">RentPilot</span>
+                                <span className="font-bold text-xl text-white">Nook</span>
                             </div>
                             <p className="text-gray-400 max-w-sm leading-relaxed">
-                                The all-in-one property management platform that helps landlords save time, 
+                                The all-in-one property management platform that helps landlords save time,
                                 reduce stress, and grow their rental business.
                             </p>
                         </div>
-                        
+
                         <div>
                             <h4 className="font-semibold text-white mb-4">Product</h4>
                             <ul className="space-y-3 text-gray-400">
@@ -412,7 +412,7 @@ export default function LandingPage() {
                     </div>
 
                     <div className="pt-8 border-t border-gray-800 flex flex-col md:flex-row items-center justify-between gap-4">
-                        <p className="text-gray-400 text-sm">© 2026 RentPilot. All rights reserved.</p>
+                        <p className="text-gray-400 text-sm">© 2026 Nook. All rights reserved.</p>
                         <div className="flex items-center gap-6 text-sm text-gray-400">
                             <a href="#" className="hover:text-white transition">Twitter</a>
                             <a href="#" className="hover:text-white transition">LinkedIn</a>

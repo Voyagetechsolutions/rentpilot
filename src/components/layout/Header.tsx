@@ -30,6 +30,27 @@ export function Header({ title, breadcrumbs }: HeaderProps) {
     const { data: session } = useSession();
     const [searchQuery, setSearchQuery] = useState('');
     const [showSearchResults, setShowSearchResults] = useState(false);
+    const [notifications, setNotifications] = useState<any[]>([]);
+    const [unreadCount, setUnreadCount] = useState(0);
+
+    React.useEffect(() => {
+        if (session?.user) {
+            fetchNotifications();
+        }
+    }, [session]);
+
+    const fetchNotifications = async () => {
+        try {
+            const response = await fetch('/api/notifications?limit=5');
+            const result = await response.json();
+            if (result.success) {
+                setNotifications(result.data.notifications);
+                setUnreadCount(result.data.unreadCount);
+            }
+        } catch (error) {
+            console.error('Failed to fetch notifications:', error);
+        }
+    };
 
     const handleSignOut = () => {
         signOut({ callbackUrl: '/login' });
@@ -103,9 +124,11 @@ export function Header({ title, breadcrumbs }: HeaderProps) {
                     trigger={
                         <button className="btn btn-icon btn-tertiary relative">
                             <Bell className="w-5 h-5" />
-                            <span className="absolute -top-1 -right-1 w-5 h-5 bg-danger text-white text-xs rounded-full flex items-center justify-center">
-                                3
-                            </span>
+                            {unreadCount > 0 && (
+                                <span className="absolute -top-1 -right-1 w-5 h-5 bg-danger text-white text-xs rounded-full flex items-center justify-center">
+                                    {unreadCount}
+                                </span>
+                            )}
                         </button>
                     }
                 >
@@ -113,24 +136,23 @@ export function Header({ title, breadcrumbs }: HeaderProps) {
                         <div className="font-medium">Notifications</div>
                     </div>
                     <div className="max-h-80 overflow-y-auto">
-                        <DropdownItem>
-                            <div>
-                                <div className="font-medium text-sm">Rent payment received</div>
-                                <div className="text-xs text-text-muted">John Smith - $1,500</div>
+                        {notifications.length === 0 ? (
+                            <div className="p-4 text-center text-sm text-text-muted">
+                                No notifications
                             </div>
-                        </DropdownItem>
-                        <DropdownItem>
-                            <div>
-                                <div className="font-medium text-sm">New maintenance request</div>
-                                <div className="text-xs text-text-muted">Unit A2 - Plumbing issue</div>
-                            </div>
-                        </DropdownItem>
-                        <DropdownItem>
-                            <div>
-                                <div className="font-medium text-sm">Lease expiring soon</div>
-                                <div className="text-xs text-text-muted">Jane Doe - 30 days left</div>
-                            </div>
-                        </DropdownItem>
+                        ) : (
+                            notifications.map((notification) => (
+                                <DropdownItem key={notification.id}>
+                                    <div className={notification.isRead ? 'opacity-60' : ''}>
+                                        <div className="font-medium text-sm">{notification.title}</div>
+                                        <div className="text-xs text-text-muted">{notification.message}</div>
+                                        <div className="text-[10px] text-text-muted mt-1">
+                                            {new Date(notification.createdAt).toLocaleDateString()}
+                                        </div>
+                                    </div>
+                                </DropdownItem>
+                            ))
+                        )}
                     </div>
                     <div className="p-2 border-t border-border">
                         <Link href="/notifications" className="text-sm text-primary text-center block">

@@ -9,7 +9,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'RentPilot - Rental Property Management',
+  title: 'Nook - Rental Property Management',
   description: 'Manage your rental properties, tenants, and payments in one place',
 };
 

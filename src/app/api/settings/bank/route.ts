@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
         });
 
         // Get user's organization name for subaccount
-        const organizationName = settings?.organizationName || 'RentPilot Landlord';
+        const organizationName = settings?.organizationName || 'Nook Landlord';
 
         // Create Paystack subaccount if not exists
         let subaccountCode = settings?.paystackSubaccountCode;

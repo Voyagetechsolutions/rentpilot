@@ -35,9 +35,9 @@ interface SystemInfo {
 export default function AdminSettingsPage() {
     const [activeTab, setActiveTab] = useState('general');
     const [settings, setSettings] = useState<PlatformSettings>({
-        platformName: 'RentPilot',
+        platformName: 'Nook',
         platformFee: 2,
-        supportEmail: 'support@rentpilot.com',
+        supportEmail: 'support@nookpms.com',
         maintenanceMode: false,
         allowNewRegistrations: true,
         requireEmailVerification: false,
@@ -117,8 +117,8 @@ export default function AdminSettingsPage() {
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
                                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors ${activeTab === tab.id
-                                        ? 'bg-purple-600 text-white'
-                                        : 'text-gray-300 hover:bg-gray-700'
+                                    ? 'bg-purple-600 text-white'
+                                    : 'text-gray-300 hover:bg-gray-700'
                                     }`}
                             >
                                 <tab.icon className="w-5 h-5" />

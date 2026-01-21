@@ -126,7 +126,7 @@ export default function InvitationAcceptPage() {
             <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
                 <Card className="max-w-md w-full text-center p-8">
                     <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto mb-4" />
-                    <h1 className="text-2xl font-bold mb-2">Welcome to RentPilot!</h1>
+                    <h1 className="text-2xl font-bold mb-2">Welcome to Nook!</h1>
                     <p className="text-text-secondary mb-6">
                         Your account has been created successfully. You will be redirected to login in a few seconds.
                     </p>
@@ -184,7 +184,7 @@ export default function InvitationAcceptPage() {
                     </div>
                     <h1 className="text-2xl font-bold mb-2">You&apos;re Invited!</h1>
                     <p className="text-text-secondary">
-                        You have been invited to join RentPilot as a tenant
+                        You have been invited to join Nook as a tenant
                     </p>
                 </div>
 

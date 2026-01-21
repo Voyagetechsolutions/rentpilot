@@ -60,7 +60,7 @@ export function TenantLayout({ children, title }: TenantLayoutProps) {
                             <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
                                 <Home className="w-5 h-5 text-white" />
                             </div>
-                            <span className="font-bold text-lg">RentPilot</span>
+                            <span className="font-bold text-lg">Nook</span>
                         </Link>
                         <button
                             className="lg:hidden p-2 hover:bg-gray-100 rounded-lg"
@@ -80,8 +80,8 @@ export function TenantLayout({ children, title }: TenantLayoutProps) {
                                     key={item.href}
                                     href={item.href}
                                     className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive
-                                            ? 'bg-primary text-white'
-                                            : 'text-text-secondary hover:bg-gray-100'
+                                        ? 'bg-primary text-white'
+                                        : 'text-text-secondary hover:bg-gray-100'
                                         }`}
                                     onClick={() => setSidebarOpen(false)}
                                 >

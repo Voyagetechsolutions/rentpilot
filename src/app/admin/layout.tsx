@@ -46,7 +46,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                             <Shield className="w-6 h-6 text-white" />
                         </div>
                         <div>
-                            <div className="font-bold text-lg">RentPilot</div>
+                            <div className="font-bold text-lg">Nook</div>
                             <div className="text-xs text-gray-400">Admin Panel</div>
                         </div>
                     </Link>
@@ -64,8 +64,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                                     <Link
                                         href={item.href}
                                         className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${isActive
-                                                ? 'bg-purple-600 text-white'
-                                                : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+                                            ? 'bg-purple-600 text-white'
+                                            : 'text-gray-300 hover:bg-gray-700 hover:text-white'
                                             }`}
                                     >
                                         <Icon className="w-5 h-5" />

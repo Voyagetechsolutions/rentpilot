@@ -53,7 +53,7 @@ export default function DashboardPage() {
             <AppShell title="Overview">
                 {/* Welcome Message */}
                 <div className="bg-gradient-to-r from-cyan-500 to-teal-600 rounded-2xl p-8 text-white mb-8">
-                    <h2 className="text-2xl font-bold mb-2">Welcome to RentPilot! 👋</h2>
+                    <h2 className="text-2xl font-bold mb-2">Welcome to Nook! 👋</h2>
                     <p className="text-cyan-100 mb-6">
                         Let's get you started. Add your first property to begin managing your rentals.
                     </p>

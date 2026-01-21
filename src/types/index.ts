@@ -1,4 +1,4 @@
-// Type definitions for RentPilot
+// Type definitions for Nook
 
 export type Role = 'LANDLORD' | 'TENANT';
 export type UnitStatus = 'VACANT' | 'OCCUPIED';

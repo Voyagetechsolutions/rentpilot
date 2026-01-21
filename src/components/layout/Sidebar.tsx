@@ -13,6 +13,9 @@ import {
     CreditCard,
     Wrench,
     FolderOpen,
+    ClipboardCheck,
+    Wallet,
+    Zap,
     BarChart3,
     Settings,
     HelpCircle,
@@ -27,7 +30,10 @@ const mainNavItems = [
     { icon: FileText, label: 'Leases', href: '/leases' },
     { icon: Receipt, label: 'Rent Ledger', href: '/rent-ledger' },
     { icon: CreditCard, label: 'Payments', href: '/payments' },
+    { icon: Wallet, label: 'Deposits', href: '/deposits' },
     { icon: Wrench, label: 'Maintenance', href: '/maintenance' },
+    { icon: ClipboardCheck, label: 'Inspections', href: '/inspections' },
+    { icon: Zap, label: 'Utilities', href: '/utilities' },
     { icon: FolderOpen, label: 'Documents', href: '/documents' },
     { icon: BarChart3, label: 'Reports', href: '/reports' },
     { icon: Settings, label: 'Settings', href: '/settings' },
@@ -42,10 +48,10 @@ export function Sidebar() {
             <div className="sidebar-header">
                 <Link href="/dashboard" className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-teal-600 flex items-center justify-center">
-                        <span className="text-white font-bold text-lg">R</span>
+                        <span className="text-white font-bold text-lg">N</span>
                     </div>
                     <div>
-                        <div className="font-bold text-lg">RentPilot</div>
+                        <div className="font-bold text-lg">Nook</div>
                         <div className="text-xs text-text-muted">My Properties</div>
                     </div>
                 </Link>

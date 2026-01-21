@@ -137,7 +137,7 @@ export default function AdminDashboardPage() {
             {/* Header */}
             <div>
                 <h1 className="text-2xl font-bold">Platform Dashboard</h1>
-                <p className="text-gray-400">Overview of RentPilot platform metrics</p>
+                <p className="text-gray-400">Overview of Nook platform metrics</p>
             </div>
 
             {/* Stats Grid */}

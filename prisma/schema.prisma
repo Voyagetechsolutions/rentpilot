@@ -89,19 +89,20 @@ model Unit {
   bedrooms    Int        @default(1)
   bathrooms   Int        @default(1)
   rentAmount  Float
-  status      String     @default("VACANT") // VACANT, OCCUPIED
+  status      String     @default("VACANT") // VACANT, OCCUPIED, RESERVED, UNDER_MAINTENANCE
   leases      Lease[]
   maintenance MaintenanceRequest[]
   documents   Document[]
   invitations TenantInvitation[]
+  inspections Inspection[]
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 }
 
 model Tenant {
-  id              String   @id @default(cuid())
-  userId          String   @unique
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id              String            @id @default(cuid())
+  userId          String            @unique
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   fullName        String
   phone           String
   idNumber        String?
@@ -109,8 +110,9 @@ model Tenant {
   payments        Payment[]
   maintenance     MaintenanceRequest[]
   onlinePayments  OnlinePayment[]
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  screening       TenantScreening?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
 }
 
 model TenantInvitation {
@@ -140,11 +142,26 @@ model Lease {
   startDate      DateTime
   endDate        DateTime
   dueDay         Int             @default(1)
-  status         String          @default("ACTIVE") // ACTIVE, ENDED
+  status         String          @default("ACTIVE") // ACTIVE, ENDED, TERMINATED
+  
+  // Lease enhancements
+  escalationRate    Float?       // Annual rent increase percentage
+  escalationDate    DateTime?    // When escalation applies
+  petsAllowed       Boolean      @default(false)
+  parkingIncluded   Boolean      @default(false)
+  specialClauses    String?      // JSON array of custom clauses
+  noticePeriodDays  Int          @default(30)
+  renewalStatus     String?      // PENDING, RENEWED, TERMINATED
+  renewalNotifiedAt DateTime?
+  
+  // Relations
   rentCharges    RentCharge[]
   payments       Payment[]
   documents      Document[]
   onlinePayments OnlinePayment[]
+  inspections    Inspection[]
+  depositRecord  Deposit?
+  utilities      UtilityBilling[]
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
 }
@@ -257,4 +274,173 @@ model ActivityLog {
   details     String?  // JSON additional info
   ipAddress   String?
   createdAt   DateTime @default(now())
+}
+
+// ========================
+// Phase 2: Inspection System
+// ========================
+
+model Inspection {
+  id            String               @id @default(cuid())
+  unitId        String
+  unit          Unit                 @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  leaseId       String?
+  lease         Lease?               @relation(fields: [leaseId], references: [id], onDelete: SetNull)
+  type          String               // MOVE_IN, PERIODIC, MOVE_OUT
+  scheduledDate DateTime
+  completedAt   DateTime?
+  status        String               @default("SCHEDULED") // SCHEDULED, IN_PROGRESS, COMPLETED, CANCELLED
+  notes         String?
+  items         InspectionItem[]
+  signatures    InspectionSignature[]
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+}
+
+model InspectionItem {
+  id           String     @id @default(cuid())
+  inspectionId String
+  inspection   Inspection @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+  room         String     // LIVING_ROOM, BEDROOM_1, KITCHEN, BATHROOM, etc.
+  item         String     // WALLS, FLOORS, WINDOWS, DOORS, FIXTURES, etc.
+  condition    String     // GOOD, FAIR, POOR, DAMAGED, N/A
+  notes        String?
+  photos       String     @default("[]") // JSON array of URLs
+  createdAt    DateTime   @default(now())
+}
+
+model InspectionSignature {
+  id           String     @id @default(cuid())
+  inspectionId String
+  inspection   Inspection @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+  signedBy     String     // LANDLORD, TENANT
+  signatureUrl String
+  signedAt     DateTime   @default(now())
+}
+
+// ========================
+// Phase 2: Deposit Management
+// ========================
+
+model Deposit {
+  id              String             @id @default(cuid())
+  leaseId         String             @unique
+  lease           Lease              @relation(fields: [leaseId], references: [id], onDelete: Cascade)
+  amount          Float
+  paidDate        DateTime?
+  bankName        String?
+  accountNumber   String?            // Interest-bearing account
+  interestRate    Float              @default(0) // SA Prime Rate typically
+  accruedInterest Float              @default(0)
+  refundedAmount  Float?
+  refundedAt      DateTime?
+  status          String             @default("PENDING") // PENDING, HELD, REFUNDED, PARTIALLY_REFUNDED
+  deductions      DepositDeduction[]
+  disputes        DepositDispute[]
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+}
+
+model DepositDeduction {
+  id          String   @id @default(cuid())
+  depositId   String
+  deposit     Deposit  @relation(fields: [depositId], references: [id], onDelete: Cascade)
+  reason      String   // PAINTING, REPAIRS, KEYS, CLEANING, DAMAGE, OTHER
+  description String
+  amount      Float
+  evidence    String   @default("[]") // JSON array of photo/invoice URLs
+  createdAt   DateTime @default(now())
+}
+
+model DepositDispute {
+  id          String    @id @default(cuid())
+  depositId   String
+  deposit     Deposit   @relation(fields: [depositId], references: [id], onDelete: Cascade)
+  deductionId String?
+  reason      String
+  status      String    @default("OPEN") // OPEN, RESOLVED_TENANT, RESOLVED_LANDLORD, WITHDRAWN
+  response    String?
+  createdAt   DateTime  @default(now())
+  resolvedAt  DateTime?
+}
+
+// ========================
+// Phase 2: Utilities Billing
+// ========================
+
+model UtilityBilling {
+  id            String         @id @default(cuid())
+  leaseId       String
+  lease         Lease          @relation(fields: [leaseId], references: [id], onDelete: Cascade)
+  type          String         // ELECTRICITY, WATER, GAS, REFUSE, WIFI, OTHER
+  billingMethod String         // PREPAID, METERED, FIXED
+  fixedAmount   Float?         // For FIXED billing method
+  ratePerUnit   Float?         // For METERED billing
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  readings      MeterReading[]
+}
+
+model MeterReading {
+  id               String         @id @default(cuid())
+  utilityBillingId String
+  utilityBilling   UtilityBilling @relation(fields: [utilityBillingId], references: [id], onDelete: Cascade)
+  month            String         // "2026-01"
+  previousReading  Float
+  currentReading   Float
+  unitsUsed        Float
+  totalCharge      Float
+  photoProof       String?        // URL of meter photo
+  notes            String?
+  createdAt        DateTime       @default(now())
+}
+
+// ========================
+// Phase 2: Notifications
+// ========================
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String   // RENT_DUE, RENT_OVERDUE, MAINTENANCE_UPDATE, LEASE_EXPIRY, INSPECTION_SCHEDULED, PAYMENT_RECEIVED
+  title     String
+  message   String
+  isRead    Boolean  @default(false)
+  actionUrl String?
+  createdAt DateTime @default(now())
+}
+
+model NotificationPreference {
+  id               String  @id @default(cuid())
+  userId           String  @unique
+  emailEnabled     Boolean @default(true)
+  smsEnabled       Boolean @default(false)
+  pushEnabled      Boolean @default(true)
+  rentDueDays      Int     @default(3)  // Days before due date to remind
+  rentOverdueDays  Int     @default(1)  // Days after due date to alert
+  leaseExpiryDays  Int     @default(60) // Days before expiry to remind
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+// ========================
+// Phase 2: Tenant Screening
+// ========================
+
+model TenantScreening {
+  id                  String   @id @default(cuid())
+  tenantId            String   @unique
+  tenant              Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creditScore         Int?
+  monthlyIncome       Float?
+  affordabilityRatio  Float?   // Monthly income / rent amount
+  previousLandlordRef String?  // Reference check notes
+  employerRef         String?  // Employment verification notes
+  idVerified          Boolean  @default(false)
+  incomeVerified      Boolean  @default(false)
+  riskScore           Int?     // 0-100 calculated score
+  riskLevel           String?  // LOW, MEDIUM, HIGH
+  notes               String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 }

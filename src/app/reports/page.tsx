@@ -13,6 +13,7 @@ import {
     Home,
     Users,
     Loader2,
+    FileSpreadsheet,
 } from 'lucide-react';
 
 const periodOptions = [
@@ -62,24 +63,56 @@ export default function ReportsPage() {
             title: 'Income Report',
             description: 'Summary of all rent collected and payment sources',
             icon: DollarSign,
+            category: 'Financial',
+        },
+        {
+            id: 'arrears-aging',
+            title: 'Arrears Aging Report',
+            description: 'Outstanding rent by age (30/60/90+ days overdue)',
+            icon: TrendingUp,
+            category: 'Financial',
+        },
+        {
+            id: 'unit-profitability',
+            title: 'Unit Profitability Report',
+            description: 'Income vs expenses per unit, ROI analysis',
+            icon: BarChart3,
+            category: 'Financial',
         },
         {
             id: 'occupancy',
             title: 'Occupancy Report',
             description: 'Unit occupancy rates and vacancy trends',
             icon: Home,
+            category: 'Property',
         },
         {
-            id: 'arrears',
-            title: 'Arrears Report',
-            description: 'Outstanding rent and overdue payments by tenant',
+            id: 'vacancy-analysis',
+            title: 'Vacancy Analysis',
+            description: 'Vacant units, days vacant, turnover rate',
+            icon: Home,
+            category: 'Property',
+        },
+        {
+            id: 'maintenance-costs',
+            title: 'Maintenance Cost Report',
+            description: 'Maintenance expenses by property and category',
             icon: TrendingUp,
+            category: 'Property',
         },
         {
-            id: 'tenant',
-            title: 'Tenant Report',
-            description: 'Tenant payment history and lease status',
+            id: 'tenant-performance',
+            title: 'Tenant Payment Performance',
+            description: 'On-time payment rate, payment history by tenant',
             icon: Users,
+            category: 'Tenant',
+        },
+        {
+            id: 'lease-expiry',
+            title: 'Lease Expiry Report',
+            description: 'Upcoming lease expirations (30/60/90 days)',
+            icon: Users,
+            category: 'Tenant',
         },
     ];
 
@@ -188,11 +221,15 @@ export default function ReportsPage() {
                                 <div className="flex gap-2">
                                     <Button size="sm" variant="secondary">
                                         <BarChart3 className="w-4 h-4" />
-                                        View Report
+                                        View
                                     </Button>
                                     <Button size="sm" variant="tertiary">
                                         <Download className="w-4 h-4" />
-                                        Export PDF
+                                        PDF
+                                    </Button>
+                                    <Button size="sm" variant="tertiary">
+                                        <FileSpreadsheet className="w-4 h-4" />
+                                        Excel
                                     </Button>
                                 </div>
                             </div>
@@ -200,6 +237,6 @@ export default function ReportsPage() {
                     </Card>
                 ))}
             </div>
-        </AppShell>
+        </AppShell >
     );
 }

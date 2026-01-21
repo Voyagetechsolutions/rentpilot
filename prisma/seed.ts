@@ -17,7 +17,7 @@ async function main() {
     }
 
     // Create admin user
-    const adminEmail = process.env.ADMIN_EMAIL || 'admin@rentpilot.com';
+    const adminEmail = process.env.ADMIN_EMAIL || 'admin@nookpms.com';
     const adminPassword = process.env.ADMIN_PASSWORD || 'Admin@123';
     const hashedPassword = await bcrypt.hash(adminPassword, 12);
 
