@@ -12,7 +12,20 @@ import {
     Loader2,
     CheckCircle2,
     XCircle,
+    FileText,
+    Download,
 } from 'lucide-react';
+
+interface ReceiptData {
+    receiptNumber: string;
+    amount: number;
+    method: string;
+    reference: string;
+    date: string;
+    tenant: { name: string };
+    property: { name: string; unit: string; address: string };
+    allocations: { month: string; amount: number }[];
+}
 
 export default function PaymentCallbackPage() {
     const searchParams = useSearchParams();
@@ -22,6 +35,7 @@ export default function PaymentCallbackPage() {
         amount: number;
         reference: string;
     } | null>(null);
+    const [receipt, setReceipt] = useState<ReceiptData | null>(null);
 
     useEffect(() => {
         const verifyPayment = async () => {
@@ -40,6 +54,26 @@ export default function PaymentCallbackPage() {
                         amount: result.data.amount,
                         reference: result.data.reference,
                     });
+
+                    // Try to fetch receipt
+                    try {
+                        const paymentRes = await fetch(`/api/tenant/payments`);
+                        const paymentResult = await paymentRes.json();
+                        if (paymentResult.success) {
+                            const matchedPayment = paymentResult.data.payments.find(
+                                (p: { reference: string }) => p.reference?.includes(reference)
+                            );
+                            if (matchedPayment) {
+                                const receiptRes = await fetch(`/api/payments/${matchedPayment.id}/receipt`);
+                                const receiptResult = await receiptRes.json();
+                                if (receiptResult.success) {
+                                    setReceipt(receiptResult.data);
+                                }
+                            }
+                        }
+                    } catch {
+                        // Receipt fetch is optional
+                    }
                 } else {
                     setStatus('failed');
                 }
@@ -70,13 +104,69 @@ export default function PaymentCallbackPage() {
                             <p className="text-text-secondary mb-4">
                                 Your payment of R{paymentInfo?.amount?.toLocaleString()} has been received.
                             </p>
-                            <div className="bg-gray-50 p-4 rounded-lg mb-6">
-                                <div className="text-sm text-text-muted">Reference</div>
-                                <div className="font-mono text-sm">{paymentInfo?.reference}</div>
+
+                            <div className="bg-gray-50 p-4 rounded-lg mb-6 space-y-2">
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-text-muted">Reference</span>
+                                    <span className="font-mono text-sm">{paymentInfo?.reference}</span>
+                                </div>
+                                {receipt && (
+                                    <>
+                                        <div className="flex justify-between text-sm">
+                                            <span className="text-text-muted">Receipt #</span>
+                                            <span className="font-mono text-sm">{receipt.receiptNumber}</span>
+                                        </div>
+                                        <div className="flex justify-between text-sm">
+                                            <span className="text-text-muted">Property</span>
+                                            <span>{receipt.property.name} — Unit {receipt.property.unit}</span>
+                                        </div>
+                                        {receipt.allocations.length > 0 && (
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-text-muted">Covers</span>
+                                                <span>{receipt.allocations.map(a => a.month).join(', ')}</span>
+                                            </div>
+                                        )}
+                                    </>
+                                )}
                             </div>
-                            <Link href="/tenant">
-                                <Button>Back to Dashboard</Button>
-                            </Link>
+
+                            <div className="flex flex-col gap-3">
+                                {receipt && (
+                                    <Button variant="secondary" className="w-full" onClick={() => {
+                                        const receiptText = `
+PAYMENT RECEIPT
+${receipt.receiptNumber}
+==========================
+Amount: R${receipt.amount.toLocaleString()}
+Method: ${receipt.method}
+Date: ${new Date(receipt.date).toLocaleDateString('en-ZA')}
+Reference: ${receipt.reference}
+Property: ${receipt.property.name}
+Unit: ${receipt.property.unit}
+Months: ${receipt.allocations.map(a => a.month).join(', ')}
+==========================
+                                        `.trim();
+                                        const blob = new Blob([receiptText], { type: 'text/plain' });
+                                        const url = URL.createObjectURL(blob);
+                                        const a = document.createElement('a');
+                                        a.href = url;
+                                        a.download = `${receipt.receiptNumber}.txt`;
+                                        a.click();
+                                    }}>
+                                        <Download className="w-4 h-4" />
+                                        Download Receipt
+                                    </Button>
+                                )}
+                                <Link href="/tenant/payments" className="w-full">
+                                    <Button variant="secondary" className="w-full">
+                                        <FileText className="w-4 h-4" />
+                                        View Payment History
+                                    </Button>
+                                </Link>
+                                <Link href="/tenant" className="w-full">
+                                    <Button className="w-full">Back to Dashboard</Button>
+                                </Link>
+                            </div>
                         </>
                     )}
 

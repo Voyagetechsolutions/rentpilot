@@ -3,6 +3,14 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { initializePayment, generateReference } from '@/lib/paystack';
+import crypto from 'crypto';
+
+// Generate idempotency key from lease + amount + date
+function generateIdempotencyKey(leaseId: string, amount: number): string {
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    const raw = `${leaseId}_${amount}_${today}`;
+    return crypto.createHash('sha256').update(raw).digest('hex').substring(0, 32);
+}
 
 // POST /api/payments/initiate - Initialize a payment for tenant
 export async function POST(request: NextRequest) {
@@ -66,11 +74,40 @@ export async function POST(request: NextRequest) {
             if (unpaidCharges.length === 0) {
                 return NextResponse.json({ success: false, error: 'No outstanding balance' }, { status: 400 });
             }
-            amount = unpaidCharges.reduce((sum, charge) => sum + (charge.amountDue - charge.amountPaid), 0);
+            amount = unpaidCharges.reduce((sum: number, charge: { amountDue: number; amountPaid: number }) => sum + (charge.amountDue - charge.amountPaid), 0);
         }
 
         if (amount <= 0) {
             return NextResponse.json({ success: false, error: 'Invalid payment amount' }, { status: 400 });
+        }
+
+        // Idempotency check — prevent duplicate payments for same lease+amount on same day
+        const idempotencyKey = generateIdempotencyKey(activeLease.id, amount);
+        const existingPayment = await prisma.onlinePayment.findUnique({
+            where: { idempotencyKey },
+        });
+
+        if (existingPayment) {
+            if (existingPayment.status === 'PENDING' && existingPayment.authorizationUrl) {
+                // Return existing pending payment URL
+                return NextResponse.json({
+                    success: true,
+                    data: {
+                        authorizationUrl: existingPayment.authorizationUrl,
+                        accessCode: existingPayment.accessCode,
+                        reference: existingPayment.reference,
+                        amount: existingPayment.amount,
+                        directPayout: true,
+                        resumedExisting: true,
+                    },
+                });
+            }
+            if (existingPayment.status === 'SUCCESS') {
+                return NextResponse.json({
+                    success: false,
+                    error: 'A payment for this amount has already been processed today'
+                }, { status: 409 });
+            }
         }
 
         // Generate unique reference
@@ -90,7 +127,7 @@ export async function POST(request: NextRequest) {
             amount: amount,
             reference: reference,
             callbackUrl: callbackUrl,
-            subaccountCode: subaccountCode, // Money goes directly to landlord!
+            subaccountCode: subaccountCode,
             metadata: {
                 tenantId: tenant.id,
                 leaseId: activeLease.id,
@@ -108,7 +145,7 @@ export async function POST(request: NextRequest) {
             }, { status: 500 });
         }
 
-        // Store pending payment in database
+        // Store pending payment in database with idempotency key
         await prisma.onlinePayment.create({
             data: {
                 tenantId: tenant.id,
@@ -118,6 +155,7 @@ export async function POST(request: NextRequest) {
                 accessCode: paystackResponse.data.access_code,
                 authorizationUrl: paystackResponse.data.authorization_url,
                 status: 'PENDING',
+                idempotencyKey,
             },
         });
 
@@ -128,7 +166,7 @@ export async function POST(request: NextRequest) {
                 accessCode: paystackResponse.data.access_code,
                 reference: reference,
                 amount: amount,
-                directPayout: !!subaccountCode, // Let frontend know if direct payout is enabled
+                directPayout: !!subaccountCode,
             },
         });
     } catch (error) {

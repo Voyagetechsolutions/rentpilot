@@ -63,6 +63,11 @@ model UserSettings {
   paystackSubaccountCode    String?  @unique
   paystackSubaccountId      String?
   
+  // Bank Verification
+  bankVerified              Boolean  @default(false)
+  bankVerificationMethod    String?  // API, PENNY_DROP
+  bankVerifiedAt            DateTime?
+  
   createdAt                 DateTime @default(now())
   updatedAt                 DateTime @updatedAt
 }
@@ -261,8 +266,49 @@ model OnlinePayment {
   status          String   @default("PENDING") // PENDING, SUCCESS, FAILED
   gatewayResponse String?  // JSON response from Paystack
   paidAt          DateTime?
+  idempotencyKey  String?  @unique // Prevents duplicate payment initiation
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+}
+
+// ========================
+// Transaction Ledger (Central Financial Truth)
+// ========================
+
+model TransactionLedger {
+  id              String   @id @default(cuid())
+  tenantId        String
+  landlordId      String
+  propertyId      String
+  leaseId         String
+  paymentId       String?  // Link to Payment record
+  onlinePaymentId String?  // Link to OnlinePayment record
+  amount          Float
+  platformFee     Float    @default(0)
+  netAmount       Float    // amount - platformFee
+  paymentMethod   String   // CARD, EFT, BANK_TRANSFER, CASH, ONLINE
+  status          String   @default("PENDING") // PENDING, SUCCESS, FAILED, CANCELLED
+  reference       String   @unique
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// ========================
+// Payout Tracking
+// ========================
+
+model Payout {
+  id            String    @id @default(cuid())
+  landlordId    String
+  amount        Float
+  platformFee   Float     @default(0)
+  netAmount     Float     // amount - platformFee
+  status        String    @default("PENDING") // PENDING, PROCESSING, COMPLETED, FAILED
+  reference     String?   // Paystack transfer reference
+  processedAt   DateTime?
+  failureReason String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 }
 
 model ActivityLog {

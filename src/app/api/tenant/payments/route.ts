@@ -42,11 +42,10 @@ export async function GET() {
             }
         });
 
-        // Get all successful online payments
+        // Get all online payments (all statuses)
         const onlinePayments = await prisma.onlinePayment.findMany({
             where: {
                 tenantId: tenant.id,
-                status: 'SUCCESS',
             },
             orderBy: { paidAt: 'desc' },
             include: {
@@ -60,38 +59,44 @@ export async function GET() {
             }
         });
 
-        // Combine and format for the frontend
-        const formattedPayments = payments.map(p => ({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const formattedPayments = payments.map((p: any) => ({
             id: p.id,
             amount: p.amount,
-            date: p.datePaid,
+            datePaid: p.datePaid,
             method: p.method,
             reference: p.reference,
+            status: 'SUCCESS',
             property: p.lease.unit.property.name,
             unit: p.lease.unit.unitNumber,
-            months: p.allocations.map(a => a.rentCharge.month),
+            allocations: p.allocations.map((a: { rentCharge: { month: string }; amount: number }) => ({
+                month: a.rentCharge.month,
+                amount: a.amount,
+            })),
             source: 'manual' as const,
         }));
 
-        // Only add online payments that don't already have a matching Payment record
-        // (webhook creates both OnlinePayment + Payment, so we check by reference)
-        const paymentRefs = new Set(payments.map(p => p.reference).filter(Boolean));
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const paymentRefs = new Set(payments.map((p: any) => p.reference).filter(Boolean));
         const uniqueOnlinePayments = onlinePayments
-            .filter(op => !paymentRefs.has(`${op.reference} - Paystack`))
-            .map(op => ({
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            .filter((op: any) => !paymentRefs.has(`${op.reference} - Paystack`))
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            .map((op: any) => ({
                 id: op.id,
                 amount: op.amount,
-                date: op.paidAt || op.createdAt,
+                datePaid: op.paidAt || op.createdAt,
                 method: 'ONLINE',
                 reference: op.reference,
+                status: op.status,
                 property: op.lease.unit.property.name,
                 unit: op.lease.unit.unitNumber,
-                months: [],
+                allocations: [] as { month: string; amount: number }[],
                 source: 'online' as const,
             }));
 
         const allPayments = [...formattedPayments, ...uniqueOnlinePayments]
-            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            .sort((a, b) => new Date(b.datePaid).getTime() - new Date(a.datePaid).getTime());
 
         const totalPaid = allPayments.reduce((sum, p) => sum + p.amount, 0);
 

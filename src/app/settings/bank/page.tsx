@@ -13,6 +13,8 @@ import {
     AlertCircle,
     CheckCircle2,
     CreditCard,
+    ShieldCheck,
+    Clock,
 } from 'lucide-react';
 
 interface Bank {
@@ -26,6 +28,9 @@ interface BankSettings {
     accountNumber: string | null;
     accountName: string | null;
     paystackSubaccountCode: string | null;
+    bankVerified: boolean;
+    bankVerificationMethod: string | null;
+    bankVerifiedAt: string | null;
 }
 
 export default function BankSettingsPage() {
@@ -92,12 +97,14 @@ export default function BankSettingsPage() {
 
             if (result.success) {
                 setSettings({
-                    ...settings,
                     bankName: result.data.bankName,
                     accountNumber: result.data.accountNumber,
                     accountName: result.data.accountName,
                     paystackSubaccountCode: 'active',
                     bankCode: formData.bankCode,
+                    bankVerified: result.data.bankVerified,
+                    bankVerificationMethod: result.data.bankVerificationMethod,
+                    bankVerifiedAt: result.data.bankVerifiedAt,
                 });
                 setSuccess(result.message);
             } else {
@@ -153,6 +160,38 @@ export default function BankSettingsPage() {
                             </div>
                         </Card>
 
+                        {/* Verification Status Card */}
+                        {settings?.bankVerified && (
+                            <Card className="bg-green-50 border-green-200">
+                                <div className="flex items-start gap-3">
+                                    <ShieldCheck className="w-6 h-6 text-green-600 flex-shrink-0 mt-0.5" />
+                                    <div className="flex-1">
+                                        <div className="font-semibold text-green-800">Bank Account Verified</div>
+                                        <div className="text-sm text-green-700 space-y-1 mt-1">
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-medium">Account Holder:</span>
+                                                <span>{settings.accountName}</span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-medium">Method:</span>
+                                                <Badge variant="success">
+                                                    {settings.bankVerificationMethod === 'API' ? 'Bank API Verification' : settings.bankVerificationMethod}
+                                                </Badge>
+                                            </div>
+                                            {settings.bankVerifiedAt && (
+                                                <div className="flex items-center gap-1 text-green-600">
+                                                    <Clock className="w-3.5 h-3.5" />
+                                                    <span>Verified on {new Date(settings.bankVerifiedAt).toLocaleDateString('en-ZA', {
+                                                        year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit',
+                                                    })}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </Card>
+                        )}
+
                         {/* Bank Account Form */}
                         <Card>
                             <h3 className="font-semibold mb-4 flex items-center gap-2">
@@ -160,15 +199,10 @@ export default function BankSettingsPage() {
                                 Bank Account Details
                             </h3>
 
-                            {settings?.accountName && (
-                                <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
-                                    <div className="flex items-center gap-2 text-green-700">
-                                        <CheckCircle2 className="w-5 h-5" />
-                                        <span className="font-medium">Verified Account</span>
-                                    </div>
-                                    <div className="mt-2 text-green-600">
-                                        {settings.accountName}
-                                    </div>
+                            {settings?.bankVerified && (settings?.bankCode !== formData.bankCode || settings?.accountNumber !== formData.accountNumber) && (
+                                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 flex items-center gap-2 text-yellow-700 mb-4">
+                                    <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                                    <span className="text-sm">Changing bank details will require re-verification and create a new payout account.</span>
                                 </div>
                             )}
 

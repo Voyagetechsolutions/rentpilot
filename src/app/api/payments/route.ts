@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { generateReference } from '@/lib/paystack';
 
-// GET /api/payments - List all payments for authenticated user's properties
+// GET /api/payments - List all payments for authenticated user's properties (manual + online)
 export async function GET(request: NextRequest) {
     try {
         const session = await getServerSession(authOptions);
@@ -15,6 +16,7 @@ export async function GET(request: NextRequest) {
         const { searchParams } = new URL(request.url);
         const method = searchParams.get('method');
 
+        // Get manual/webhook-created payments
         const payments = await prisma.payment.findMany({
             where: {
                 lease: { unit: { property: { landlordId: userId } } },
@@ -27,18 +29,72 @@ export async function GET(request: NextRequest) {
                         unit: { include: { property: true } },
                     },
                 },
+                allocations: {
+                    include: {
+                        rentCharge: { select: { month: true } },
+                    },
+                },
             },
             orderBy: { datePaid: 'desc' },
         });
 
-        return NextResponse.json({ success: true, data: payments });
+        // Also get online payments for this landlord's properties
+        const onlinePayments = await prisma.onlinePayment.findMany({
+            where: {
+                lease: { unit: { property: { landlordId: userId } } },
+                ...(method && method !== 'ONLINE' ? { status: '__NONE__' } : {}), // filter out if method filter is not ONLINE
+            },
+            include: {
+                tenant: { select: { id: true, fullName: true, userId: true } },
+                lease: {
+                    include: {
+                        unit: { include: { property: true } },
+                    },
+                },
+            },
+            orderBy: { createdAt: 'desc' },
+        });
+
+        // De-duplicate: exclude online payments already linked via webhook Payment records
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const paymentRefs = new Set(payments.map((p: any) => p.reference).filter(Boolean));
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const uniqueOnline = onlinePayments.filter((op: any) => !paymentRefs.has(`${op.reference} - Paystack`));
+
+        // Format online payments to match Payment shape
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const formattedOnline = uniqueOnline.map((op: any) => ({
+            id: op.id,
+            tenantId: op.tenantId,
+            leaseId: op.leaseId,
+            amount: op.amount,
+            method: 'ONLINE',
+            datePaid: op.paidAt || op.createdAt,
+            reference: op.reference,
+            proofUrl: null,
+            status: op.status,
+            source: 'online',
+            tenant: op.tenant,
+            lease: op.lease,
+            allocations: [],
+            createdAt: op.createdAt,
+            updatedAt: op.updatedAt,
+        }));
+
+        // Merge and sort by date
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const allPayments = [...payments.map((p: any) => ({ ...p, source: 'manual', status: 'SUCCESS' })), ...formattedOnline]
+            .sort((a, b) => new Date(b.datePaid).getTime() - new Date(a.datePaid).getTime());
+
+        return NextResponse.json({ success: true, data: allPayments });
     } catch (error) {
         console.error('Error fetching payments:', error);
         return NextResponse.json({ success: false, error: 'Failed to fetch payments' }, { status: 500 });
     }
 }
 
-// POST /api/payments - Log a payment
+
+// POST /api/payments - Log a manual payment
 export async function POST(request: NextRequest) {
     try {
         const session = await getServerSession(authOptions);
@@ -54,10 +110,11 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ success: false, error: 'Missing required fields' }, { status: 400 });
         }
 
-        // Verify lease ownership and get unpaid rent charges
+        // Verify lease ownership and get unpaid rent charges + property info
         const lease = await prisma.lease.findFirst({
             where: { id: leaseId, unit: { property: { landlordId: userId } } },
             include: {
+                unit: { include: { property: true } },
                 rentCharges: {
                     where: { status: { in: ['UNPAID', 'PARTIAL', 'OVERDUE'] } },
                     orderBy: { dueDate: 'asc' },
@@ -68,6 +125,8 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ success: false, error: 'Lease not found' }, { status: 404 });
         }
 
+        const paymentRef = reference || generateReference();
+
         const payment = await prisma.payment.create({
             data: {
                 tenantId,
@@ -75,20 +134,20 @@ export async function POST(request: NextRequest) {
                 amount,
                 method: method.toUpperCase(),
                 datePaid: datePaid ? new Date(datePaid) : new Date(),
-                reference,
+                reference: paymentRef,
                 proofUrl,
             },
         });
 
         // Allocate payment to unpaid rent charges (oldest first)
         let remainingAmount = amount;
+        const allocatedMonths: string[] = [];
         for (const charge of lease.rentCharges) {
             if (remainingAmount <= 0) break;
 
             const outstanding = charge.amountDue - charge.amountPaid;
             const allocation = Math.min(outstanding, remainingAmount);
 
-            // Create allocation record
             await prisma.paymentAllocation.create({
                 data: {
                     paymentId: payment.id,
@@ -97,7 +156,6 @@ export async function POST(request: NextRequest) {
                 },
             });
 
-            // Update rent charge amounts
             const newAmountPaid = charge.amountPaid + allocation;
             await prisma.rentCharge.update({
                 where: { id: charge.id },
@@ -107,8 +165,63 @@ export async function POST(request: NextRequest) {
                 },
             });
 
+            allocatedMonths.push(charge.month);
             remainingAmount -= allocation;
         }
+
+        // Create Transaction Ledger entry for manual payment
+        await prisma.transactionLedger.create({
+            data: {
+                tenantId,
+                landlordId: userId!,
+                propertyId: lease.unit.property.id,
+                leaseId,
+                paymentId: payment.id,
+                amount,
+                platformFee: 0, // No fee for manual payments
+                netAmount: amount,
+                paymentMethod: method.toUpperCase(),
+                status: 'SUCCESS',
+                reference: paymentRef,
+            },
+        });
+
+        // Get tenant user for notification
+        const tenant = await prisma.tenant.findUnique({
+            where: { id: tenantId },
+            select: { userId: true, fullName: true },
+        });
+
+        if (tenant) {
+            await prisma.notification.create({
+                data: {
+                    userId: tenant.userId,
+                    type: 'PAYMENT_RECEIVED',
+                    title: 'Payment Recorded',
+                    message: `A payment of R${amount.toLocaleString()} for ${lease.unit.property.name} Unit ${lease.unit.unitNumber} has been recorded by your landlord.`,
+                    actionUrl: '/tenant/payments',
+                },
+            });
+        }
+
+        // Activity log
+        await prisma.activityLog.create({
+            data: {
+                userId: userId!,
+                action: 'PAYMENT_LOGGED',
+                entityType: 'Payment',
+                entityId: payment.id,
+                details: JSON.stringify({
+                    amount,
+                    method: method.toUpperCase(),
+                    reference: paymentRef,
+                    tenant: tenant?.fullName,
+                    property: lease.unit.property.name,
+                    unit: lease.unit.unitNumber,
+                    allocatedMonths,
+                }),
+            },
+        });
 
         return NextResponse.json({ success: true, data: payment }, { status: 201 });
     } catch (error) {

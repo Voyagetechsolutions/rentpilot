@@ -23,6 +23,9 @@ export async function GET() {
                 accountNumber: true,
                 accountName: true,
                 paystackSubaccountCode: true,
+                bankVerified: true,
+                bankVerificationMethod: true,
+                bankVerifiedAt: true,
             },
         });
 
@@ -32,7 +35,6 @@ export async function GET() {
             banks = await getBanks();
         } catch (error) {
             console.error('Failed to fetch banks:', error);
-            // Return empty list if Paystack fails
         }
 
         return NextResponse.json({
@@ -70,6 +72,22 @@ export async function POST(request: NextRequest) {
             }, { status: 400 });
         }
 
+        // Get existing settings for audit comparison
+        const existingSettings = await prisma.userSettings.findUnique({
+            where: { userId },
+        });
+
+        const oldBankDetails = existingSettings ? {
+            bankName: existingSettings.bankName,
+            bankCode: existingSettings.bankCode,
+            accountNumber: existingSettings.accountNumber,
+            accountName: existingSettings.accountName,
+        } : null;
+
+        // Check if bank details are changing (requires re-verification)
+        const bankDetailsChanged = existingSettings &&
+            (existingSettings.bankCode !== bankCode || existingSettings.accountNumber !== accountNumber);
+
         // Verify the bank account with Paystack
         let accountName: string;
         try {
@@ -83,25 +101,20 @@ export async function POST(request: NextRequest) {
             }, { status: 400 });
         }
 
-        // Get existing settings
-        let settings = await prisma.userSettings.findUnique({
-            where: { userId },
-        });
-
         // Get user's organization name for subaccount
-        const organizationName = settings?.organizationName || 'Nook Landlord';
+        const organizationName = existingSettings?.organizationName || 'Nook Landlord';
 
-        // Create Paystack subaccount if not exists
-        let subaccountCode = settings?.paystackSubaccountCode;
-        let subaccountId = settings?.paystackSubaccountId;
+        // Create Paystack subaccount if not exists or bank details changed
+        let subaccountCode = existingSettings?.paystackSubaccountCode;
+        let subaccountId = existingSettings?.paystackSubaccountId;
 
-        if (!subaccountCode) {
+        if (!subaccountCode || bankDetailsChanged) {
             try {
                 const subaccount = await createSubaccount({
                     businessName: organizationName,
                     bankCode,
                     accountNumber,
-                    percentageCharge: 2, // 2% platform fee (adjust as needed)
+                    percentageCharge: 2,
                     primaryContactEmail: userEmail || '',
                 });
                 subaccountCode = subaccount.data.subaccount_code;
@@ -115,8 +128,8 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        // Update or create settings
-        settings = await prisma.userSettings.upsert({
+        // Update or create settings with verification fields
+        const settings = await prisma.userSettings.upsert({
             where: { userId },
             update: {
                 bankName,
@@ -125,6 +138,9 @@ export async function POST(request: NextRequest) {
                 accountName,
                 paystackSubaccountCode: subaccountCode,
                 paystackSubaccountId: subaccountId,
+                bankVerified: true,
+                bankVerificationMethod: 'API',
+                bankVerifiedAt: new Date(),
             },
             create: {
                 userId: userId!,
@@ -134,6 +150,29 @@ export async function POST(request: NextRequest) {
                 accountName,
                 paystackSubaccountCode: subaccountCode,
                 paystackSubaccountId: subaccountId,
+                bankVerified: true,
+                bankVerificationMethod: 'API',
+                bankVerifiedAt: new Date(),
+            },
+        });
+
+        // Audit log for bank account changes
+        await prisma.activityLog.create({
+            data: {
+                userId: userId!,
+                action: bankDetailsChanged ? 'BANK_ACCOUNT_CHANGED' : 'BANK_ACCOUNT_ADDED',
+                entityType: 'UserSettings',
+                entityId: settings.id,
+                details: JSON.stringify({
+                    previous: oldBankDetails,
+                    new: {
+                        bankName,
+                        bankCode,
+                        accountNumber: `****${accountNumber.slice(-4)}`,
+                        accountName,
+                    },
+                    verificationMethod: 'API',
+                }),
             },
         });
 
@@ -144,6 +183,9 @@ export async function POST(request: NextRequest) {
                 accountNumber: settings.accountNumber,
                 accountName: settings.accountName,
                 hasSubaccount: true,
+                bankVerified: settings.bankVerified,
+                bankVerifiedAt: settings.bankVerifiedAt,
+                bankVerificationMethod: settings.bankVerificationMethod,
             },
             message: 'Bank account verified and saved! Payments will go directly to your account.',
         });

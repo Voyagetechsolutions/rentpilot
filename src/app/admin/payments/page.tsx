@@ -10,6 +10,9 @@ import {
     ChevronRight,
     Download,
     TrendingUp,
+    DollarSign,
+    XCircle,
+    Clock,
 } from 'lucide-react';
 
 interface Payment {
@@ -18,6 +21,8 @@ interface Payment {
     method: string;
     datePaid: string;
     reference: string | null;
+    status: string;
+    source: string;
     tenant: {
         fullName: string;
     };
@@ -31,6 +36,17 @@ interface Payment {
     };
 }
 
+interface FinanceOverview {
+    totalRevenue: number;
+    totalPayments: number;
+    thisMonthRevenue: number;
+    thisMonthPayments: number;
+    monthlyGrowth: number;
+    platformFeesCollected: number;
+    failedPayments: number;
+    pendingPayments: number;
+}
+
 export default function AdminPaymentsPage() {
     const [payments, setPayments] = useState<Payment[]>([]);
     const [loading, setLoading] = useState(true);
@@ -38,7 +54,7 @@ export default function AdminPaymentsPage() {
     const [search, setSearch] = useState('');
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
-    const [totalAmount, setTotalAmount] = useState(0);
+    const [finance, setFinance] = useState<FinanceOverview | null>(null);
 
     const fetchPayments = async () => {
         try {
@@ -54,7 +70,6 @@ export default function AdminPaymentsPage() {
             if (result.success) {
                 setPayments(result.data.payments);
                 setTotalPages(result.data.totalPages);
-                setTotalAmount(result.data.totalAmount);
             } else {
                 setError(result.error);
             }
@@ -64,6 +79,22 @@ export default function AdminPaymentsPage() {
             setLoading(false);
         }
     };
+
+    const fetchFinance = async () => {
+        try {
+            const response = await fetch('/api/admin/finance');
+            const result = await response.json();
+            if (result.success) {
+                setFinance(result.data.overview);
+            }
+        } catch {
+            // Finance KPIs are supplementary
+        }
+    };
+
+    useEffect(() => {
+        fetchFinance();
+    }, []);
 
     useEffect(() => {
         fetchPayments();
@@ -85,6 +116,15 @@ export default function AdminPaymentsPage() {
         return colors[method] || 'bg-gray-500/20 text-gray-400';
     };
 
+    const getStatusBadge = (status: string) => {
+        const colors: Record<string, string> = {
+            SUCCESS: 'bg-green-500/20 text-green-400',
+            PENDING: 'bg-yellow-500/20 text-yellow-400',
+            FAILED: 'bg-red-500/20 text-red-400',
+        };
+        return colors[status] || 'bg-gray-500/20 text-gray-400';
+    };
+
     return (
         <div className="space-y-6">
             {/* Header */}
@@ -102,13 +142,14 @@ export default function AdminPaymentsPage() {
                 </button>
             </div>
 
-            {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Finance KPI Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="bg-gray-800 rounded-xl p-5 border border-gray-700">
                     <div className="flex items-center justify-between">
                         <div>
                             <p className="text-gray-400 text-sm">Total Revenue</p>
-                            <p className="text-3xl font-bold">R{totalAmount.toLocaleString()}</p>
+                            <p className="text-2xl font-bold">R{(finance?.totalRevenue || 0).toLocaleString()}</p>
+                            <p className="text-xs text-gray-500 mt-1">{finance?.totalPayments || 0} total payments</p>
                         </div>
                         <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center">
                             <TrendingUp className="w-6 h-6 text-white" />
@@ -118,11 +159,52 @@ export default function AdminPaymentsPage() {
                 <div className="bg-gray-800 rounded-xl p-5 border border-gray-700">
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-gray-400 text-sm">Total Transactions</p>
-                            <p className="text-3xl font-bold">{payments.length > 0 ? (page - 1) * 15 + payments.length : 0}</p>
+                            <p className="text-gray-400 text-sm">This Month</p>
+                            <p className="text-2xl font-bold">R{(finance?.thisMonthRevenue || 0).toLocaleString()}</p>
+                            <p className="text-xs mt-1">
+                                {finance?.monthlyGrowth !== undefined && (
+                                    <span className={finance.monthlyGrowth >= 0 ? 'text-green-400' : 'text-red-400'}>
+                                        {finance.monthlyGrowth >= 0 ? '↑' : '↓'} {Math.abs(finance.monthlyGrowth)}% vs last month
+                                    </span>
+                                )}
+                            </p>
+                        </div>
+                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
+                            <DollarSign className="w-6 h-6 text-white" />
+                        </div>
+                    </div>
+                </div>
+                <div className="bg-gray-800 rounded-xl p-5 border border-gray-700">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-gray-400 text-sm">Platform Fees</p>
+                            <p className="text-2xl font-bold">R{(finance?.platformFeesCollected || 0).toLocaleString()}</p>
+                            <p className="text-xs text-gray-500 mt-1">2% per transaction</p>
                         </div>
                         <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center">
                             <CreditCard className="w-6 h-6 text-white" />
+                        </div>
+                    </div>
+                </div>
+                <div className="bg-gray-800 rounded-xl p-5 border border-gray-700">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-gray-400 text-sm">Issues</p>
+                            <div className="flex items-center gap-3 mt-1">
+                                <span className="flex items-center gap-1">
+                                    <XCircle className="w-4 h-4 text-red-400" />
+                                    <span className="text-lg font-bold">{finance?.failedPayments || 0}</span>
+                                    <span className="text-xs text-gray-500">failed</span>
+                                </span>
+                                <span className="flex items-center gap-1">
+                                    <Clock className="w-4 h-4 text-yellow-400" />
+                                    <span className="text-lg font-bold">{finance?.pendingPayments || 0}</span>
+                                    <span className="text-xs text-gray-500">pending</span>
+                                </span>
+                            </div>
+                        </div>
+                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-red-500 to-orange-500 flex items-center justify-center">
+                            <AlertCircle className="w-6 h-6 text-white" />
                         </div>
                     </div>
                 </div>
@@ -174,6 +256,7 @@ export default function AdminPaymentsPage() {
                                 <th className="text-left px-4 py-3 text-sm font-medium text-gray-400">Property / Unit</th>
                                 <th className="text-left px-4 py-3 text-sm font-medium text-gray-400">Amount</th>
                                 <th className="text-left px-4 py-3 text-sm font-medium text-gray-400">Method</th>
+                                <th className="text-left px-4 py-3 text-sm font-medium text-gray-400">Status</th>
                                 <th className="text-left px-4 py-3 text-sm font-medium text-gray-400">Date</th>
                                 <th className="text-left px-4 py-3 text-sm font-medium text-gray-400">Reference</th>
                             </tr>
@@ -196,6 +279,14 @@ export default function AdminPaymentsPage() {
                                     <td className="px-4 py-4">
                                         <span className={`px-2 py-1 text-xs font-medium rounded-full ${getMethodBadge(payment.method)}`}>
                                             {payment.method}
+                                        </span>
+                                        {payment.source === 'online' && (
+                                            <span className="ml-1 text-[10px] text-blue-400">⚡</span>
+                                        )}
+                                    </td>
+                                    <td className="px-4 py-4">
+                                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusBadge(payment.status)}`}>
+                                            {payment.status}
                                         </span>
                                     </td>
                                     <td className="px-4 py-4 text-gray-400">
