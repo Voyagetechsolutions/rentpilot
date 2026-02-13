@@ -10,7 +10,12 @@ import {
     AlertCircle,
     FileText,
     Download,
+    Upload,
+    Plus,
 } from 'lucide-react';
+import { Modal } from '@/components/ui/Modal';
+import { Input } from '@/components/ui/Input';
+import { Button } from '@/components/ui/Button';
 
 interface PaymentRecord {
     id: string;
@@ -37,6 +42,13 @@ export default function TenantPaymentsPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [downloadingReceipt, setDownloadingReceipt] = useState<string | null>(null);
+    const [showProofModal, setShowProofModal] = useState(false);
+    const [uploadingProof, setUploadingProof] = useState(false);
+    const [proofFile, setProofFile] = useState<File | null>(null);
+    const [proofData, setProofData] = useState({
+        amount: '',
+        reference: '',
+    });
 
     useEffect(() => {
         const fetchPayments = async () => {
@@ -57,6 +69,39 @@ export default function TenantPaymentsPage() {
 
         fetchPayments();
     }, []);
+
+    const handleUploadProof = async () => {
+        if (!proofFile || !proofData.amount) return;
+
+        setUploadingProof(true);
+        try {
+            const formData = new FormData();
+            formData.append('file', proofFile);
+            formData.append('amount', proofData.amount);
+            formData.append('reference', proofData.reference || `PROOF-${Date.now()}`);
+
+            const response = await fetch('/api/tenant/payments/proof', {
+                method: 'POST',
+                body: formData,
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                setShowProofModal(false);
+                setProofFile(null);
+                setProofData({ amount: '', reference: '' });
+                // specific reload or refetch logic
+                window.location.reload(); // Simple reload to refresh data
+            } else {
+                alert(result.error || 'Failed to upload proof of payment');
+            }
+        } catch (error) {
+            console.error('Error uploading proof:', error);
+            alert('Failed to upload proof of payment');
+        } finally {
+            setUploadingProof(false);
+        }
+    };
 
     const handleViewReceipt = async (paymentId: string) => {
         try {
@@ -118,9 +163,15 @@ Generated: ${new Date(r.generatedAt).toLocaleString('en-ZA')}
     return (
         <TenantLayout title="Payment History">
             <div className="space-y-6">
-                <div>
-                    <h1 className="text-2xl font-bold">Payment History</h1>
-                    <p className="text-text-secondary">View all your rent payments</p>
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h1 className="text-2xl font-bold">Payment History</h1>
+                        <p className="text-text-secondary">View all your rent payments</p>
+                    </div>
+                    <Button onClick={() => setShowProofModal(true)}>
+                        <Plus className="w-4 h-4" />
+                        Upload Proof
+                    </Button>
                 </div>
 
                 {loading ? (
@@ -211,6 +262,59 @@ Generated: ${new Date(r.generatedAt).toLocaleString('en-ZA')}
                     </Card>
                 )}
             </div>
+
+            <Modal
+                isOpen={showProofModal}
+                onClose={() => setShowProofModal(false)}
+                title="Upload Proof of Payment"
+                footer={
+                    <>
+                        <Button variant="secondary" onClick={() => setShowProofModal(false)}>Cancel</Button>
+                        <Button onClick={handleUploadProof} disabled={uploadingProof || !proofFile || !proofData.amount}>
+                            {uploadingProof ? <><Loader2 className="w-4 h-4 animate-spin" /> Uploading...</> : 'Submit Proof'}
+                        </Button>
+                    </>
+                }
+            >
+                <div className="space-y-4">
+                    <Input
+                        label="Amount Paid (R)"
+                        type="number"
+                        placeholder="0.00"
+                        value={proofData.amount}
+                        onChange={(e) => setProofData({ ...proofData, amount: e.target.value })}
+                        required
+                    />
+                    <Input
+                        label="Reference (Optional)"
+                        placeholder="e.g. SEP2024-RENT"
+                        value={proofData.reference}
+                        onChange={(e) => setProofData({ ...proofData, reference: e.target.value })}
+                    />
+                    <div>
+                        <label className="form-label">Proof of Payment File</label>
+                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-primary transition-colors relative">
+                            <input
+                                type="file"
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                accept=".pdf,.jpg,.jpeg,.png"
+                                onChange={(e) => setProofFile(e.target.files?.[0] || null)}
+                            />
+                            {proofFile ? (
+                                <div>
+                                    <FileText className="w-8 h-8 mx-auto text-primary mb-2" />
+                                    <p className="text-sm font-medium text-primary">{proofFile.name}</p>
+                                </div>
+                            ) : (
+                                <div>
+                                    <Upload className="w-8 h-8 mx-auto text-gray-400 mb-2" />
+                                    <p className="text-sm text-gray-500">Click or drag file to upload</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </Modal>
         </TenantLayout>
     );
 }

@@ -13,7 +13,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { Select } from '@/components/ui/Select';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
-import { useMaintenance, useUnits, useMutation } from '@/lib/hooks';
+import { useMaintenance, useUnits, useMutation, useTenants } from '@/lib/hooks';
 import {
     Plus,
     Download,
@@ -75,6 +75,8 @@ export default function MaintenancePage() {
         }
     }, [searchParams]);
 
+    const [updating, setUpdating] = useState<string | null>(null);
+
     const { mutate: createTicket, loading: creating } = useMutation({
         url: '/api/maintenance',
         onSuccess: () => {
@@ -83,6 +85,30 @@ export default function MaintenancePage() {
             refetch();
         },
     });
+
+    const handleMarkasDone = async (id: string) => {
+        if (updating) return;
+        setUpdating(id);
+        try {
+            const response = await fetch(`/api/maintenance/${id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: 'COMPLETED' }),
+            });
+            const result = await response.json();
+            if (result.success) {
+                refetch();
+            } else {
+                console.error('Failed to update ticket:', result.error);
+                alert('Failed to update ticket status');
+            }
+        } catch (error) {
+            console.error('Error updating ticket:', error);
+            alert('Failed to update ticket status');
+        } finally {
+            setUpdating(null);
+        }
+    };
 
     const handleSubmit = async () => {
         if (!formData.unitId || !formData.title || !formData.category) return;
@@ -132,6 +158,22 @@ export default function MaintenancePage() {
             key: 'createdAt',
             header: 'Created',
             render: (row: NonNullable<typeof tickets>[0]) => new Date(row.createdAt).toLocaleDateString()
+        },
+        {
+            key: 'actions',
+            header: '',
+            render: (row: NonNullable<typeof tickets>[0]) => (
+                row.status !== 'COMPLETED' ? (
+                    <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => handleMarkasDone(row.id)}
+                        disabled={updating === row.id}
+                    >
+                        {updating === row.id ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Mark as Done'}
+                    </Button>
+                ) : null
+            )
         },
     ];
 

@@ -14,8 +14,20 @@ export async function GET() {
         const userId = (session.user as { id?: string }).id;
 
         // Get tenant profile
+        // Get tenant profile with active leases for property info lookup
         const tenant = await prisma.tenant.findUnique({
             where: { userId },
+            include: {
+                leases: {
+                    include: {
+                        unit: {
+                            include: {
+                                property: true
+                            }
+                        }
+                    }
+                }
+            }
         });
 
         if (!tenant) {
@@ -59,6 +71,28 @@ export async function GET() {
             }
         });
 
+        // Get pending manual payments (Proof of Payment) from Ledger
+        const pendingLedgerPayments = await prisma.transactionLedger.findMany({
+            where: {
+                tenantId: tenant.id,
+                status: 'PENDING',
+                paymentId: null,
+                onlinePaymentId: null
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+
+        // Helper to find property name
+        const getPropertyName = (leaseId: string) => {
+            const lease = tenant.leases.find(l => l.id === leaseId);
+            return lease?.unit.property.name || 'Unknown Property';
+        };
+
+        const getUnitNumber = (leaseId: string) => {
+            const lease = tenant.leases.find(l => l.id === leaseId);
+            return lease?.unit.unitNumber || 'Unknown Unit';
+        };
+
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const formattedPayments = payments.map((p: any) => ({
             id: p.id,
@@ -95,10 +129,23 @@ export async function GET() {
                 source: 'online' as const,
             }));
 
-        const allPayments = [...formattedPayments, ...uniqueOnlinePayments]
+        const formattedPendingPayments = pendingLedgerPayments.map(p => ({
+            id: p.id,
+            amount: p.amount,
+            datePaid: p.createdAt,
+            method: p.paymentMethod,
+            reference: p.reference,
+            status: p.status,
+            property: getPropertyName(p.leaseId),
+            unit: getUnitNumber(p.leaseId),
+            allocations: [] as { month: string; amount: number }[],
+            source: 'manual' as const,
+        }));
+
+        const allPayments = [...formattedPayments, ...uniqueOnlinePayments, ...formattedPendingPayments]
             .sort((a, b) => new Date(b.datePaid).getTime() - new Date(a.datePaid).getTime());
 
-        const totalPaid = allPayments.reduce((sum, p) => sum + p.amount, 0);
+        const totalPaid = allPayments.reduce((sum, p) => p.status === 'SUCCESS' ? sum + p.amount : sum, 0);
 
         return NextResponse.json({
             success: true,

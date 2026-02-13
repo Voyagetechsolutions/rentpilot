@@ -81,9 +81,62 @@ export async function GET(request: NextRequest) {
             updatedAt: op.updatedAt,
         }));
 
+        // Get pending manual payments (Proof of Payment) from Ledger
+        const pendingLedgerPayments = await prisma.transactionLedger.findMany({
+            where: {
+                landlordId: userId,
+                status: 'PENDING',
+                paymentId: null,
+                onlinePaymentId: null
+            },
+            orderBy: { createdAt: 'desc' },
+            // We need tenant and lease/property info.
+            // But TransactionLedger only has IDs.
+            // We can't include relations because they don't exist in schema for Ledger.
+            // So we have to fetch them or carefuly map.
+            // Actually, we can fetch all related tenants/properties? Expensive.
+            // Or just fetch the specific ones for these payments?
+            // Let's use a Promise.all to fetch details for each pending payment or filtered list.
+        });
+
+        const pendingPaymentDetails = await Promise.all(pendingLedgerPayments.map(async (p) => {
+            const lease = await prisma.lease.findUnique({
+                where: { id: p.leaseId },
+                include: {
+                    tenant: true,
+                    unit: { include: { property: true } }
+                }
+            });
+            return {
+                ...p,
+                lease,
+                tenant: lease?.tenant
+            };
+        }));
+
+        const formattedPending = pendingPaymentDetails.map(p => ({
+            id: p.id,
+            tenantId: p.tenantId,
+            leaseId: p.leaseId,
+            amount: p.amount,
+            method: p.paymentMethod,
+            datePaid: p.createdAt,
+            reference: p.reference,
+            proofUrl: null, // Ledger doesn't have proofUrl directly? 
+            // Wait, ActivityLog might have it. 
+            // Or we just show "Pending" and don't show proof URL in list yet?
+            status: p.status,
+            source: 'ledger',
+            tenant: p.tenant,
+            lease: p.lease,
+            allocations: [],
+            createdAt: p.createdAt,
+            updatedAt: p.updatedAt,
+        }));
+
         // Merge and sort by date
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const allPayments = [...payments.map((p: any) => ({ ...p, source: 'manual', status: 'SUCCESS' })), ...formattedOnline]
+        const allPayments = [...payments.map((p: any) => ({ ...p, source: 'manual', status: 'SUCCESS' })), ...formattedOnline, ...formattedPending]
             .sort((a, b) => new Date(b.datePaid).getTime() - new Date(a.datePaid).getTime());
 
         return NextResponse.json({ success: true, data: allPayments });

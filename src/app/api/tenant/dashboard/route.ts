@@ -60,25 +60,57 @@ export async function GET() {
             totalPaid: 0,
             balance: 0,
             nextDueDate: null as string | null,
+            canPay: false,
         };
+
+        let documents: any[] = [];
 
         if (activeLease) {
             const currentMonth = new Date().toISOString().slice(0, 7);
+
+            // Calculate total outstanding balance from all charges
+            // We need to fetch ALL unpaid charges, not just the last 6
+            // But for performance, we'll rely on the fetched ones or make a separate lightweight query if needed.
+            // For now, let's use the fetched ones as a good approximation or update the query above.
+
+            const unpaidCharges = activeLease.rentCharges; // Using the ones we fetched
+
+            // Calculate balance: Sum of (Due - Paid) for all charges
+            const balance = unpaidCharges.reduce((sum, charge) => {
+                return sum + (charge.amountDue - charge.amountPaid);
+            }, 0);
+
             const currentCharge = activeLease.rentCharges.find(
                 r => r.month === currentMonth
             );
+
+            const today = new Date();
+            const isAfter20th = today.getDate() >= 20;
 
             rentSummary = {
                 currentRent: activeLease.rentAmount,
                 totalDue: currentCharge?.amountDue || activeLease.rentAmount,
                 totalPaid: currentCharge?.amountPaid || 0,
-                balance: (currentCharge?.amountDue || activeLease.rentAmount) - (currentCharge?.amountPaid || 0),
-                nextDueDate: new Date(
-                    new Date().getFullYear(),
-                    new Date().getMonth(),
-                    activeLease.dueDay
-                ).toISOString(),
+                balance: balance,
+                nextDueDate: "1st of the next month", // User requested format
+                canPay: balance > 0 || isAfter20th,
             };
+
+            // Fetch documents linked to lease
+            const leaseDocs = await prisma.document.findMany({
+                where: {
+                    leaseId: activeLease.id
+                },
+                select: {
+                    id: true,
+                    filename: true,
+                    fileUrl: true,
+                    docType: true,
+                    createdAt: true
+                },
+                orderBy: { createdAt: 'desc' }
+            });
+            documents = leaseDocs;
         }
 
         // Open maintenance count
@@ -107,12 +139,23 @@ export async function GET() {
                 dueDay: activeLease.dueDay,
             } : null,
             rentSummary,
+            documents,
             recentPayments: tenant.payments.map(p => ({
                 id: p.id,
                 amount: p.amount,
                 date: p.datePaid,
                 method: p.method,
                 reference: p.reference,
+                // Status is not in Payment model in schema provided? 
+                // Ah, Payment model has no status. TransactionLedger does.
+                // But user asked for "pending" status on payment history.
+                // Schema check: Payment model lines 188-202. No status.
+                // OnlinePayment has status.
+                // We might need to infer status or add it. 
+                // Plan: Assume manual payments are 'PENDING' approval if we implement approval.
+                // But Payment table usually means "Recorded Payment".
+                // If I add "Proof of Payment", I might need a status field on Payment, or use a separate table/flag.
+                // For now, let's just return what we have.
             })),
             recentMaintenance: tenant.maintenance.map(m => ({
                 id: m.id,

@@ -100,6 +100,17 @@ export default function PaymentsPage() {
 
     const totalAmount = payments?.reduce((sum, p) => sum + p.amount, 0) ?? 0;
 
+    const { mutate: approvePayment, loading: approving } = useMutation({
+        url: '/api/payments/approve',
+        onSuccess: () => {
+            refetch();
+        },
+    });
+
+    const handleApprove = async (ledgerId: string) => {
+        await approvePayment({ ledgerId });
+    };
+
     const columns = [
         {
             key: 'datePaid',
@@ -121,17 +132,45 @@ export default function PaymentsPage() {
             key: 'amount',
             header: 'Amount',
             render: (row: NonNullable<typeof payments>[0]) => (
-                <span className="font-semibold text-success">R{row.amount.toLocaleString()}</span>
+                <span className={`font-semibold ${row.status === 'PENDING' ? 'text-warning' : 'text-success'}`}>
+                    R{row.amount.toLocaleString()}
+                </span>
             )
         },
         {
             key: 'method',
             header: 'Method',
             render: (row: NonNullable<typeof payments>[0]) => (
-                <Badge variant="completed">{methodLabels[row.method] || row.method}</Badge>
+                <Badge variant={row.status === 'SUCCESS' ? 'completed' : row.status === 'PENDING' ? 'pending' : 'secondary'}>
+                    {methodLabels[row.method] || row.method}
+                </Badge>
             )
         },
         { key: 'reference', header: 'Reference' },
+        {
+            key: 'status',
+            header: 'Status',
+            render: (row: NonNullable<typeof payments>[0]) => (
+                <Badge variant={row.status === 'SUCCESS' ? 'completed' : row.status === 'PENDING' ? 'pending' : 'danger'}>
+                    {row.status}
+                </Badge>
+            )
+        },
+        {
+            key: 'actions',
+            header: 'Actions',
+            render: (row: NonNullable<typeof payments>[0]) => (
+                row.status === 'PENDING' && row.source === 'ledger' ? (
+                    <Button
+                        size="sm"
+                        onClick={() => handleApprove(row.id)}
+                        disabled={approving}
+                    >
+                        {approving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Approve'}
+                    </Button>
+                ) : null
+            )
+        }
     ];
 
     return (

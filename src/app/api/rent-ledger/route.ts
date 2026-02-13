@@ -70,6 +70,22 @@ export async function GET(request: NextRequest) {
         const totalCollected = rentCharges.reduce((sum, r) => sum + r.amountPaid, 0);
         const outstanding = totalDue - totalCollected;
 
+        // Calculate Global Outstanding (All Time)
+        // We need a separate query for this to avoid fetching all charges into memory if we can help it,
+        // or just fetch all UNPAID/PARTIAL charges for these leases.
+        const allUnpaidCharges = await prisma.rentCharge.findMany({
+            where: {
+                leaseId: { in: leaseIds },
+                status: { in: ['UNPAID', 'PARTIAL', 'OVERDUE'] }
+            },
+            select: { amountDue: true, amountPaid: true }
+        });
+
+        const globalOutstanding = allUnpaidCharges.reduce(
+            (sum, r) => sum + (r.amountDue - r.amountPaid),
+            0
+        );
+
         return NextResponse.json({
             success: true,
             data: {
@@ -77,7 +93,8 @@ export async function GET(request: NextRequest) {
                 summary: {
                     totalDue,
                     totalCollected,
-                    outstanding
+                    outstanding,
+                    globalOutstanding
                 }
             }
         });

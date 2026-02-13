@@ -8,19 +8,20 @@ interface KpiCardProps {
     changeLabel?: string;
     onClick?: () => void;
     icon?: React.ReactNode;
+    trend?: React.ReactNode;
 }
 
-export function KpiCard({ label, value, change, changeLabel, onClick, icon }: KpiCardProps) {
+export function KpiCard({ label, value, change, changeLabel, onClick, icon, trend }: KpiCardProps) {
     const isPositive = change !== undefined && change >= 0;
 
     return (
         <div className="kpi-card" onClick={onClick}>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between pointer-events-none">
                 <span className="kpi-label">{label}</span>
                 {icon && <span className="text-neutral">{icon}</span>}
             </div>
             <div className="kpi-value">{value}</div>
-            {change !== undefined && (
+            {change !== undefined ? (
                 <div className={`kpi-change ${isPositive ? 'kpi-change-up' : 'kpi-change-down'}`}>
                     {isPositive ? (
                         <TrendingUp className="w-3 h-3" />
@@ -29,7 +30,11 @@ export function KpiCard({ label, value, change, changeLabel, onClick, icon }: Kp
                     )}
                     <span>{Math.abs(change)}% {changeLabel || 'vs last month'}</span>
                 </div>
-            )}
+            ) : trend ? (
+                <div className="kpi-trend mt-2">
+                    {trend}
+                </div>
+            ) : null}
         </div>
     );
 }

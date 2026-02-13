@@ -41,6 +41,7 @@ interface DashboardData {
         totalPaid: number;
         balance: number;
         nextDueDate: string | null;
+        canPay: boolean;
     };
     recentPayments: {
         id: string;
@@ -176,150 +177,165 @@ export default function TenantDashboardPage() {
                                             }`} />
                                     </div>
                                     <div>
-                                        <div className="text-sm text-text-muted">
-                                            {data.rentSummary.balance > 0 ? 'Balance Due' : 'Status'}
-                                        </div>
-                                        <div className={`text-2xl font-bold ${data.rentSummary.balance > 0 ? 'text-danger' : 'text-success'
-                                            }`}>
-                                            {data.rentSummary.balance > 0
-                                                ? `R${data.rentSummary.balance.toLocaleString()}`
-                                                : 'Paid ✓'
-                                            }
-                                        </div>
+                                    </div>
+                                    <div className={`text-2xl font-bold ${data.rentSummary.balance > 0 ? 'text-danger' : 'text-success'
+                                        }`}>
+                                        {data.rentSummary.balance > 0
+                                            ? `R${data.rentSummary.balance.toLocaleString()}`
+                                            : 'Paid ✓'
+                                        }
                                     </div>
                                 </div>
-                                {data.rentSummary.balance > 0 && (
-                                    <Link href="/tenant/pay">
-                                        <Button size="sm">Pay Now</Button>
-                                    </Link>
+                            </div>
+                            <div className="flex flex-col items-end gap-1">
+                                <Link href="/tenant/pay">
+                                    <Button
+                                        size="sm"
+                                        disabled={!data.rentSummary.canPay}
+                                        title={!data.rentSummary.canPay ? (data.rentSummary.balance <= 0 ? "Nothing due" : "Payment opens on the 20th") : "Pay now"}
+                                    >
+                                        Pay Now
+                                    </Button>
+                                </Link>
+                                {!data.rentSummary.canPay && data.rentSummary.balance > 0 && (
+                                    <span className="text-xs text-text-muted">Opens on 20th</span>
                                 )}
                             </div>
-                        </Card>
-
-                        <Card className="border-l-4 border-l-warning">
-                            <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-xl bg-orange-100 flex items-center justify-center">
-                                    <Calendar className="w-6 h-6 text-orange-600" />
-                                </div>
-                                <div>
-                                    <div className="text-sm text-text-muted">Next Due Date</div>
-                                    <div className="text-lg font-bold">
-                                        {daysUntilDue !== null && daysUntilDue <= 7 && daysUntilDue >= 0 ? (
-                                            <span className="text-warning">
-                                                {daysUntilDue === 0 ? 'Today' : `${daysUntilDue} days`}
-                                            </span>
-                                        ) : (
-                                            `Day ${data.lease.dueDay}`
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        </Card>
                     </div>
-                )}
-
-                {/* Quick Actions */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <Link href="/tenant/payments">
-                        <Card className="hover:border-primary transition-colors cursor-pointer text-center py-6">
-                            <CreditCard className="w-8 h-8 text-primary mx-auto mb-2" />
-                            <div className="font-medium">Payment History</div>
-                        </Card>
-                    </Link>
-                    <Link href="/tenant/maintenance?action=new">
-                        <Card className="hover:border-primary transition-colors cursor-pointer text-center py-6">
-                            <Wrench className="w-8 h-8 text-primary mx-auto mb-2" />
-                            <div className="font-medium">Report Issue</div>
-                        </Card>
-                    </Link>
-                    <Link href="/tenant/lease">
-                        <Card className="hover:border-primary transition-colors cursor-pointer text-center py-6">
-                            <Home className="w-8 h-8 text-primary mx-auto mb-2" />
-                            <div className="font-medium">My Lease</div>
-                        </Card>
-                    </Link>
-                    <Link href="/tenant/maintenance">
-                        <Card className="hover:border-primary transition-colors cursor-pointer text-center py-6 relative">
-                            <Wrench className="w-8 h-8 text-primary mx-auto mb-2" />
-                            <div className="font-medium">Maintenance</div>
-                            {data.stats.openMaintenanceCount > 0 && (
-                                <span className="absolute top-2 right-2 bg-danger text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                                    {data.stats.openMaintenanceCount}
-                                </span>
-                            )}
-                        </Card>
-                    </Link>
-                </div>
-
-                {/* Recent Activity */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Recent Payments */}
-                    <Card>
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className="font-semibold">Recent Payments</h3>
-                            <Link href="/tenant/payments" className="text-primary text-sm hover:underline flex items-center gap-1">
-                                View All <ArrowRight className="w-4 h-4" />
-                            </Link>
-                        </div>
-                        {data.recentPayments.length > 0 ? (
-                            <div className="space-y-3">
-                                {data.recentPayments.map((payment) => (
-                                    <div key={payment.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
-                                        <div className="flex items-center gap-3">
-                                            <CheckCircle2 className="w-5 h-5 text-success" />
-                                            <div>
-                                                <div className="font-medium">R{payment.amount.toLocaleString()}</div>
-                                                <div className="text-sm text-text-muted">
-                                                    {new Date(payment.date).toLocaleDateString()}
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <Badge variant="success">{payment.method}</Badge>
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <div className="text-center py-8 text-text-muted">
-                                <CreditCard className="w-10 h-10 mx-auto mb-2 opacity-50" />
-                                <p>No payment history yet</p>
-                            </div>
-                        )}
                     </Card>
 
-                    {/* Recent Maintenance */}
-                    <Card>
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className="font-semibold">Maintenance Requests</h3>
-                            <Link href="/tenant/maintenance" className="text-primary text-sm hover:underline flex items-center gap-1">
-                                View All <ArrowRight className="w-4 h-4" />
-                            </Link>
+            <Card className="border-l-4 border-l-warning">
+                <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-orange-100 flex items-center justify-center">
+                        <Calendar className="w-6 h-6 text-orange-600" />
+                        <div>
+                            <div className="text-sm text-text-muted">Next Due Date</div>
+                            <div className="text-lg font-bold">
+                                {data.rentSummary.nextDueDate ? (
+                                    (() => {
+                                        const date = new Date(data.rentSummary.nextDueDate);
+                                        if (isNaN(date.getTime())) {
+                                            return data.rentSummary.nextDueDate;
+                                        }
+                                        // Format: "1st of September"
+                                        const day = date.getDate();
+                                        const suffix = ["th", "st", "nd", "rd"][((day % 100) > 10 && (day % 100) < 20) ? 0 : (day % 10) < 4 ? day % 10 : 0];
+                                        const month = date.toLocaleString('default', { month: 'long' });
+                                        return `${day}${suffix} of ${month}`;
+                                    })()
+                                ) : (
+                                    'N/A'
+                                )}
+                            </div>
                         </div>
-                        {data.recentMaintenance.length > 0 ? (
-                            <div className="space-y-3">
-                                {data.recentMaintenance.map((request) => (
-                                    <div key={request.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
-                                        <div className="flex items-center gap-3">
-                                            <Clock className="w-5 h-5 text-text-muted" />
-                                            <div>
-                                                <div className="font-medium">{request.title}</div>
-                                                <div className="text-sm text-text-muted">
-                                                    {new Date(request.createdAt).toLocaleDateString()}
-                                                </div>
-                                            </div>
-                                        </div>
-                                        {getStatusBadge(request.status)}
-                                    </div>
-                                ))}
+                    </div>
+            </Card>
+        </div>
+    )
+}
+
+{/* Quick Actions */ }
+<div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <Link href="/tenant/payments">
+        <Card className="hover:border-primary transition-colors cursor-pointer text-center py-6">
+            <CreditCard className="w-8 h-8 text-primary mx-auto mb-2" />
+            <div className="font-medium">Payment History</div>
+        </Card>
+    </Link>
+    <Link href="/tenant/maintenance?action=new">
+        <Card className="hover:border-primary transition-colors cursor-pointer text-center py-6">
+            <Wrench className="w-8 h-8 text-primary mx-auto mb-2" />
+            <div className="font-medium">Report Issue</div>
+        </Card>
+    </Link>
+    <Link href="/tenant/lease">
+        <Card className="hover:border-primary transition-colors cursor-pointer text-center py-6">
+            <Home className="w-8 h-8 text-primary mx-auto mb-2" />
+            <div className="font-medium">My Lease</div>
+        </Card>
+    </Link>
+    <Link href="/tenant/maintenance">
+        <Card className="hover:border-primary transition-colors cursor-pointer text-center py-6 relative">
+            <Wrench className="w-8 h-8 text-primary mx-auto mb-2" />
+            <div className="font-medium">Maintenance</div>
+            {data.stats.openMaintenanceCount > 0 && (
+                <span className="absolute top-2 right-2 bg-danger text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                    {data.stats.openMaintenanceCount}
+                </span>
+            )}
+        </Card>
+    </Link>
+</div>
+
+{/* Recent Activity */ }
+<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    {/* Recent Payments */}
+    <Card>
+        <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold">Recent Payments</h3>
+            <Link href="/tenant/payments" className="text-primary text-sm hover:underline flex items-center gap-1">
+                View All <ArrowRight className="w-4 h-4" />
+            </Link>
+        </div>
+        {data.recentPayments.length > 0 ? (
+            <div className="space-y-3">
+                {data.recentPayments.map((payment) => (
+                    <div key={payment.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+                        <div className="flex items-center gap-3">
+                            <CheckCircle2 className="w-5 h-5 text-success" />
+                            <div>
+                                <div className="font-medium">R{payment.amount.toLocaleString()}</div>
+                                <div className="text-sm text-text-muted">
+                                    {new Date(payment.date).toLocaleDateString()}
+                                </div>
                             </div>
-                        ) : (
-                            <div className="text-center py-8 text-text-muted">
-                                <Wrench className="w-10 h-10 mx-auto mb-2 opacity-50" />
-                                <p>No maintenance requests</p>
-                            </div>
-                        )}
-                    </Card>
-                </div>
+                        </div>
+                        <Badge variant="success">{payment.method}</Badge>
+                    </div>
+                ))}
             </div>
-        </TenantLayout>
+        ) : (
+            <div className="text-center py-8 text-text-muted">
+                <CreditCard className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                <p>No payment history yet</p>
+            </div>
+        )}
+    </Card>
+
+    {/* Recent Maintenance */}
+    <Card>
+        <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold">Maintenance Requests</h3>
+            <Link href="/tenant/maintenance" className="text-primary text-sm hover:underline flex items-center gap-1">
+                View All <ArrowRight className="w-4 h-4" />
+            </Link>
+        </div>
+        {data.recentMaintenance.length > 0 ? (
+            <div className="space-y-3">
+                {data.recentMaintenance.map((request) => (
+                    <div key={request.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+                        <div className="flex items-center gap-3">
+                            <Clock className="w-5 h-5 text-text-muted" />
+                            <div>
+                                <div className="font-medium">{request.title}</div>
+                                <div className="text-sm text-text-muted">
+                                    {new Date(request.createdAt).toLocaleDateString()}
+                                </div>
+                            </div>
+                        </div>
+                        {getStatusBadge(request.status)}
+                    </div>
+                ))}
+            </div>
+        ) : (
+            <div className="text-center py-8 text-text-muted">
+                <Wrench className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                <p>No maintenance requests</p>
+            </div>
+        )}
+    </Card>
+</div>
+            </div >
+        </TenantLayout >
     );
 }

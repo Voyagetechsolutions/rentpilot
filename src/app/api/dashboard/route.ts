@@ -39,14 +39,19 @@ export async function GET() {
         const vacantUnits = totalUnits - occupiedUnits;
         const occupancyRate = totalUnits > 0 ? Math.round((occupiedUnits / totalUnits) * 100) : 0;
 
+        const currentMonth = new Date().toISOString().slice(0, 7);
+
         // Run remaining queries in parallel
-        const [rentChargeAgg, overdueCharges, openTickets, recentMaintenanceRaw, overdueLeases] = await Promise.all([
-            // Rent charges aggregation
+        const [currentMonthRent, overdueCharges, openTickets, recentMaintenanceRaw, overdueLeases] = await Promise.all([
+            // Rent charges aggregation (Current Month)
             prisma.rentCharge.aggregate({
-                where: { lease: { unitId: { in: unitIds } } },
+                where: {
+                    lease: { unitId: { in: unitIds } },
+                    month: currentMonth
+                },
                 _sum: { amountDue: true, amountPaid: true },
             }),
-            // Overdue charges
+            // Overdue charges (All time)
             prisma.rentCharge.aggregate({
                 where: {
                     lease: { unitId: { in: unitIds } },
@@ -110,8 +115,8 @@ export async function GET() {
             }),
         ]);
 
-        const rentDue = rentChargeAgg._sum.amountDue || 0;
-        const rentCollected = rentChargeAgg._sum.amountPaid || 0;
+        const rentDue = currentMonthRent._sum.amountDue || 0;
+        const rentCollected = currentMonthRent._sum.amountPaid || 0;
         const overdueAmount = (overdueCharges._sum.amountDue || 0) - (overdueCharges._sum.amountPaid || 0);
 
         const recentMaintenance = recentMaintenanceRaw.map((req) => ({
@@ -139,6 +144,7 @@ export async function GET() {
                 occupancyRate,
                 openTickets,
                 vacantUnits,
+                occupiedUnits, // Added for "Units Used" display
                 totalUnits,
             },
             overdueLeases: formattedOverdueLeases,

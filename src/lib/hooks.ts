@@ -223,6 +223,8 @@ interface Payment {
     method: string;
     datePaid: string;
     reference: string;
+    status: 'SUCCESS' | 'PENDING' | 'FAILED';
+    source: 'manual' | 'online' | 'ledger';
     tenant: Tenant;
     lease: Lease;
 }
@@ -249,6 +251,7 @@ interface DashboardData {
         occupancyRate: number;
         openTickets: number;
         vacantUnits: number;
+        occupiedUnits: number;
         totalUnits: number;
     };
     overdueLeases: {

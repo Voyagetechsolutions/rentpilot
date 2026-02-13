@@ -42,6 +42,7 @@ interface LedgerData {
         totalDue: number;
         totalCollected: number;
         outstanding: number;
+        globalOutstanding: number;
     };
 }
 
@@ -244,23 +245,29 @@ export default function RentLedgerPage() {
             breadcrumbs={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Rent Ledger' }]}
         >
             {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                 <Card>
-                    <div className="text-sm text-text-muted mb-1">Total Due</div>
+                    <div className="text-sm text-text-muted mb-1">Total Due (This Month)</div>
                     <div className="text-2xl font-bold">
                         {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : `R${(data?.summary.totalDue || 0).toLocaleString()}`}
                     </div>
                 </Card>
                 <Card>
-                    <div className="text-sm text-text-muted mb-1">Total Collected</div>
+                    <div className="text-sm text-text-muted mb-1">Collected (This Month)</div>
                     <div className="text-2xl font-bold text-success">
                         {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : `R${(data?.summary.totalCollected || 0).toLocaleString()}`}
                     </div>
                 </Card>
                 <Card>
-                    <div className="text-sm text-text-muted mb-1">Outstanding</div>
-                    <div className="text-2xl font-bold text-danger">
+                    <div className="text-sm text-text-muted mb-1">Outstanding (This Month)</div>
+                    <div className="text-2xl font-bold text-warning">
                         {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : `R${(data?.summary.outstanding || 0).toLocaleString()}`}
+                    </div>
+                </Card>
+                <Card>
+                    <div className="text-sm text-text-muted mb-1">Total Outstanding (All Time)</div>
+                    <div className="text-2xl font-bold text-danger">
+                        {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : `R${(data?.summary.globalOutstanding || 0).toLocaleString()}`}
                     </div>
                 </Card>
             </div>

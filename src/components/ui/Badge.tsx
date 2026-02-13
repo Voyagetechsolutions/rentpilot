@@ -6,7 +6,7 @@ type BadgeVariant =
     | 'vacant' | 'occupied'
     | 'submitted' | 'in-review' | 'in-progress' | 'completed'
     | 'active' | 'ended'
-    | 'success' | 'warning' | 'danger' | 'info';
+    | 'success' | 'warning' | 'danger' | 'info' | 'pending' | 'secondary';
 
 interface BadgeProps {
     children: React.ReactNode;
@@ -37,6 +37,8 @@ const variantStyles: Record<BadgeVariant, string> = {
     warning: 'bg-yellow-100 text-yellow-700',
     danger: 'bg-red-100 text-red-700',
     info: 'bg-blue-100 text-blue-700',
+    pending: 'bg-orange-100 text-orange-700',
+    secondary: 'bg-gray-200 text-gray-800',
 };
 
 export function Badge({ children, variant = 'default', className = '' }: BadgeProps) {

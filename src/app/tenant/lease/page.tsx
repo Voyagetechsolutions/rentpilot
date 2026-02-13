@@ -27,8 +27,17 @@ interface LeaseData {
     dueDay: number;
 }
 
+interface Document {
+    id: string;
+    filename: string;
+    fileUrl: string;
+    docType: string;
+    createdAt: string;
+}
+
 export default function TenantLeasePage() {
     const [lease, setLease] = useState<LeaseData | null>(null);
+    const [documents, setDocuments] = useState<Document[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
@@ -42,6 +51,7 @@ export default function TenantLeasePage() {
                         ...result.data.lease,
                         deposit: result.data.lease.rentAmount // Placeholder
                     });
+                    setDocuments(result.data.documents || []);
                 } else if (!result.data?.lease) {
                     setError('No active lease found');
                 } else {
@@ -195,13 +205,27 @@ export default function TenantLeasePage() {
                         <h3 className="font-semibold">Lease Documents</h3>
                     </div>
                     <div className="space-y-2">
-                        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                            <div className="flex items-center gap-3">
-                                <FileText className="w-5 h-5 text-text-muted" />
-                                <span>Lease Agreement</span>
+                        {documents.length > 0 ? (
+                            documents.map((doc) => (
+                                <div key={doc.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                    <div className="flex items-center gap-3">
+                                        <FileText className="w-5 h-5 text-text-muted" />
+                                        <div>
+                                            <div className="font-medium">{doc.filename}</div>
+                                            <div className="text-xs text-text-muted">{new Date(doc.createdAt).toLocaleDateString()} • {doc.docType}</div>
+                                        </div>
+                                    </div>
+                                    <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer">
+                                        <Button variant="secondary" size="sm">View</Button>
+                                    </a>
+                                </div>
+                            ))
+                        ) : (
+                            <div className="text-center py-6 text-text-muted">
+                                <FileText className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                                <p>No documents found</p>
                             </div>
-                            <Button variant="secondary" size="sm">View</Button>
-                        </div>
+                        )}
                     </div>
                 </Card>
             </div>

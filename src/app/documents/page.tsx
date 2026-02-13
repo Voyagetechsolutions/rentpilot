@@ -11,6 +11,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { Select } from '@/components/ui/Select';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
+import { useTenants } from '@/lib/hooks';
 import { Table } from '@/components/ui/Table';
 import { Badge } from '@/components/ui/Badge';
 import {
@@ -61,9 +62,16 @@ export default function DocumentsPage() {
     const [uploading, setUploading] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [tenantSearch, setTenantSearch] = useState('');
+    const { data: tenants } = useTenants(tenantSearch);
+    const [selectedTenantId, setSelectedTenantId] = useState('');
+
     const [formData, setFormData] = useState({
         name: '',
         type: 'OTHER',
+        propertyId: '',
+        unitId: '',
+        leaseId: '',
     });
 
     // Auto-open modal if action=upload in URL
@@ -112,6 +120,9 @@ export default function DocumentsPage() {
             uploadData.append('file', selectedFile);
             uploadData.append('filename', formData.name);
             uploadData.append('docType', formData.type);
+            if (formData.propertyId) uploadData.append('propertyId', formData.propertyId);
+            if (formData.unitId) uploadData.append('unitId', formData.unitId);
+            if (formData.leaseId) uploadData.append('leaseId', formData.leaseId);
 
             const response = await fetch('/api/documents', {
                 method: 'POST',
@@ -121,8 +132,10 @@ export default function DocumentsPage() {
             const result = await response.json();
             if (result.success) {
                 setShowUploadModal(false);
-                setFormData({ name: '', type: 'OTHER' });
+                setFormData({ name: '', type: 'OTHER', propertyId: '', unitId: '', leaseId: '' });
                 setSelectedFile(null);
+                setTenantSearch('');
+                setSelectedTenantId('');
                 fetchDocuments();
             } else {
                 alert(result.error || 'Failed to upload document');
@@ -286,6 +299,53 @@ export default function DocumentsPage() {
                         value={formData.type}
                         onChange={(e) => setFormData({ ...formData, type: e.target.value })}
                     />
+
+                    <div className="space-y-2">
+                        <label className="form-label">Associate with Tenant (Optional)</label>
+                        <Input
+                            placeholder="Search tenant name..."
+                            value={tenantSearch}
+                            onChange={(e) => setTenantSearch(e.target.value)}
+                            className="mb-2"
+                        />
+                        <Select
+                            options={[
+                                { value: '', label: 'Select Tenant' },
+                                ...(tenants?.map(t => ({
+                                    value: t.id,
+                                    label: `${t.fullName} (${t.leases[0]?.unit.unitNumber || 'No Unit'})`
+                                })) || [])
+                            ]}
+                            value={selectedTenantId}
+                            onChange={(e) => {
+                                const tenantId = e.target.value;
+                                setSelectedTenantId(tenantId);
+                                if (tenantId) {
+                                    const tenant = tenants?.find(t => t.id === tenantId);
+                                    const lease = tenant?.leases.find(l => l.status === 'ACTIVE') || tenant?.leases[0];
+                                    if (lease) {
+                                        setFormData(prev => ({
+                                            ...prev,
+                                            leaseId: lease.id,
+                                            unitId: lease.unitId,
+                                            propertyId: lease.unit.property.id, // Assuming structure in hook
+                                            // Hook defines Property as nested in unit? 
+                                            // Let's check hook definition. Unit has 'property' object.
+                                            // Property interface has 'id'.
+                                        }));
+                                    }
+                                } else {
+                                    setFormData(prev => ({
+                                        ...prev,
+                                        leaseId: '',
+                                        unitId: '',
+                                        propertyId: '',
+                                    }));
+                                }
+                            }}
+                        />
+                    </div>
+
                     <div>
                         <label className="form-label">File</label>
                         <div

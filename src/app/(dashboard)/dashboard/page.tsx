@@ -138,9 +138,14 @@ export default function DashboardPage() {
                     onClick={() => window.location.href = '/rent-ledger?status=overdue'}
                 />
                 <KpiCard
-                    label="Occupancy Rate"
-                    value={`${kpis.occupancyRate}%`}
+                    label="Units Used"
+                    value={`${kpis.occupiedUnits}/${kpis.totalUnits}`}
                     icon={<Home className="w-5 h-5" />}
+                    trend={
+                        <Link href="/settings/billing" className="text-xs text-primary hover:underline ml-2">
+                            Upgrade Plan
+                        </Link>
+                    }
                     onClick={() => window.location.href = '/units'}
                 />
                 <KpiCard
