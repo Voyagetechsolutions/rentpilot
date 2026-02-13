@@ -54,9 +54,15 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ success: false, error: 'Missing required fields' }, { status: 400 });
         }
 
-        // Verify lease ownership
+        // Verify lease ownership and get unpaid rent charges
         const lease = await prisma.lease.findFirst({
             where: { id: leaseId, unit: { property: { landlordId: userId } } },
+            include: {
+                rentCharges: {
+                    where: { status: { in: ['UNPAID', 'PARTIAL', 'OVERDUE'] } },
+                    orderBy: { dueDate: 'asc' },
+                },
+            },
         });
         if (!lease) {
             return NextResponse.json({ success: false, error: 'Lease not found' }, { status: 404 });
@@ -73,6 +79,36 @@ export async function POST(request: NextRequest) {
                 proofUrl,
             },
         });
+
+        // Allocate payment to unpaid rent charges (oldest first)
+        let remainingAmount = amount;
+        for (const charge of lease.rentCharges) {
+            if (remainingAmount <= 0) break;
+
+            const outstanding = charge.amountDue - charge.amountPaid;
+            const allocation = Math.min(outstanding, remainingAmount);
+
+            // Create allocation record
+            await prisma.paymentAllocation.create({
+                data: {
+                    paymentId: payment.id,
+                    rentChargeId: charge.id,
+                    amount: allocation,
+                },
+            });
+
+            // Update rent charge amounts
+            const newAmountPaid = charge.amountPaid + allocation;
+            await prisma.rentCharge.update({
+                where: { id: charge.id },
+                data: {
+                    amountPaid: newAmountPaid,
+                    status: newAmountPaid >= charge.amountDue ? 'PAID' : 'PARTIAL',
+                },
+            });
+
+            remainingAmount -= allocation;
+        }
 
         return NextResponse.json({ success: true, data: payment }, { status: 201 });
     } catch (error) {

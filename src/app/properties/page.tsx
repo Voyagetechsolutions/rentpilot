@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic';
 
 import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { AppShell } from '@/components/layout';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -23,6 +23,7 @@ import {
     Edit,
     Trash2,
     Loader2,
+    AlertCircle,
 } from 'lucide-react';
 
 interface PropertyFormData {
@@ -34,6 +35,7 @@ interface PropertyFormData {
 
 export default function PropertiesPage() {
     const searchParams = useSearchParams();
+    const router = useRouter();
     const { data: properties, loading, error, refetch } = useProperties();
     const [showAddModal, setShowAddModal] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
@@ -43,6 +45,17 @@ export default function PropertiesPage() {
         city: '',
         country: 'South Africa',
     });
+
+    // Edit state
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [editingId, setEditingId] = useState('');
+    const [editForm, setEditForm] = useState<PropertyFormData>({ name: '', address: '', city: '', country: '' });
+    const [editSaving, setEditSaving] = useState(false);
+
+    // Delete state
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [deletingProperty, setDeletingProperty] = useState<{ id: string; name: string } | null>(null);
+    const [deleteLoading, setDeleteLoading] = useState(false);
 
     // Auto-open modal if action=new in URL
     useEffect(() => {
@@ -63,6 +76,77 @@ export default function PropertiesPage() {
     const handleSubmit = async () => {
         if (!formData.name || !formData.address || !formData.city) return;
         await createProperty(formData);
+    };
+
+    const handleView = (id: string) => {
+        router.push(`/properties/${id}`);
+    };
+
+    const handleEditOpen = (row: { id: string; name: string; address: string; city: string; country: string }) => {
+        setEditingId(row.id);
+        setEditForm({ name: row.name, address: row.address, city: row.city, country: row.country });
+        setShowEditModal(true);
+    };
+
+    const handleEditSubmit = async () => {
+        setEditSaving(true);
+        try {
+            const response = await fetch(`/api/properties/${editingId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(editForm),
+            });
+            const result = await response.json();
+            if (result.success) {
+                setShowEditModal(false);
+                refetch();
+            } else {
+                alert(result.error || 'Failed to update property');
+            }
+        } catch {
+            alert('Failed to update property');
+        } finally {
+            setEditSaving(false);
+        }
+    };
+
+    const handleDeleteOpen = (row: { id: string; name: string }) => {
+        setDeletingProperty({ id: row.id, name: row.name });
+        setShowDeleteModal(true);
+    };
+
+    const handleDeleteConfirm = async () => {
+        if (!deletingProperty) return;
+        setDeleteLoading(true);
+        try {
+            const response = await fetch(`/api/properties/${deletingProperty.id}`, { method: 'DELETE' });
+            const result = await response.json();
+            if (result.success) {
+                setShowDeleteModal(false);
+                setDeletingProperty(null);
+                refetch();
+            } else {
+                alert(result.error || 'Failed to delete property');
+            }
+        } catch {
+            alert('Failed to delete property');
+        } finally {
+            setDeleteLoading(false);
+        }
+    };
+
+    const handleExport = () => {
+        if (!properties || properties.length === 0) return;
+        const headers = ['Name', 'Address', 'City', 'Country', 'Units'];
+        const rows = properties.map(p => [p.name, p.address, p.city, p.country, p.units?.length ?? 0].join(','));
+        const csv = [headers.join(','), ...rows].join('\n');
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'properties.csv';
+        a.click();
+        URL.revokeObjectURL(url);
     };
 
     const filteredProperties = properties?.filter(p =>
@@ -91,15 +175,15 @@ export default function PropertiesPage() {
             render: (row: typeof filteredProperties[0]) => (
                 <Dropdown
                     trigger={
-                        <button className="btn btn-icon btn-tertiary">
+                        <button className="btn btn-icon btn-tertiary" onClick={(e) => e.stopPropagation()}>
                             <MoreVertical className="w-4 h-4" />
                         </button>
                     }
                 >
-                    <DropdownItem icon={<Eye className="w-4 h-4" />}>View Details</DropdownItem>
-                    <DropdownItem icon={<Edit className="w-4 h-4" />}>Edit</DropdownItem>
+                    <DropdownItem icon={<Eye className="w-4 h-4" />} onClick={() => handleView(row.id)}>View Details</DropdownItem>
+                    <DropdownItem icon={<Edit className="w-4 h-4" />} onClick={() => handleEditOpen(row)}>Edit</DropdownItem>
                     <DropdownDivider />
-                    <DropdownItem icon={<Trash2 className="w-4 h-4" />} danger>Delete</DropdownItem>
+                    <DropdownItem icon={<Trash2 className="w-4 h-4" />} danger onClick={() => handleDeleteOpen(row)}>Delete</DropdownItem>
                 </Dropdown>
             )
         },
@@ -125,7 +209,7 @@ export default function PropertiesPage() {
                     </div>
                 </div>
                 <div className="page-actions">
-                    <Button variant="secondary">
+                    <Button variant="secondary" onClick={handleExport}>
                         <Download className="w-4 h-4" />
                         Export
                     </Button>
@@ -151,7 +235,7 @@ export default function PropertiesPage() {
                     <Table
                         columns={columns}
                         data={filteredProperties}
-                        onRowClick={(row) => window.location.href = `/properties/${row.id}`}
+                        onRowClick={(row) => router.push(`/properties/${row.id}`)}
                     />
                 ) : (
                     <EmptyState
@@ -218,6 +302,55 @@ export default function PropertiesPage() {
                             required
                         />
                     </div>
+                </div>
+            </Modal>
+
+            {/* Edit Property Modal */}
+            <Modal
+                isOpen={showEditModal}
+                onClose={() => setShowEditModal(false)}
+                title="Edit Property"
+                footer={
+                    <>
+                        <Button variant="secondary" onClick={() => setShowEditModal(false)}>Cancel</Button>
+                        <Button onClick={handleEditSubmit} disabled={editSaving}>
+                            {editSaving ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</> : 'Save Changes'}
+                        </Button>
+                    </>
+                }
+            >
+                <div className="space-y-4">
+                    <Input label="Property Name" value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} required />
+                    <Input label="Address" value={editForm.address} onChange={(e) => setEditForm({ ...editForm, address: e.target.value })} required />
+                    <div className="grid grid-cols-2 gap-4">
+                        <Input label="City" value={editForm.city} onChange={(e) => setEditForm({ ...editForm, city: e.target.value })} required />
+                        <Input label="Country" value={editForm.country} onChange={(e) => setEditForm({ ...editForm, country: e.target.value })} required />
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Delete Confirmation Modal */}
+            <Modal
+                isOpen={showDeleteModal}
+                onClose={() => setShowDeleteModal(false)}
+                title="Delete Property"
+                footer={
+                    <>
+                        <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>Cancel</Button>
+                        <Button onClick={handleDeleteConfirm} disabled={deleteLoading}>
+                            {deleteLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Deleting...</> : 'Delete Property'}
+                        </Button>
+                    </>
+                }
+            >
+                <div className="text-center py-4">
+                    <AlertCircle className="w-12 h-12 text-danger mx-auto mb-3" />
+                    <p className="text-lg font-medium mb-2">
+                        Are you sure you want to delete &quot;{deletingProperty?.name}&quot;?
+                    </p>
+                    <p className="text-text-secondary">
+                        This will permanently delete the property making this action irreversible.
+                    </p>
                 </div>
             </Modal>
         </AppShell>

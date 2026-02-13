@@ -18,6 +18,9 @@ interface Payment {
     date: string;
     method: string;
     reference: string;
+    property?: string;
+    unit?: string;
+    source?: string;
 }
 
 export default function TenantPaymentsPage() {
@@ -28,11 +31,11 @@ export default function TenantPaymentsPage() {
     useEffect(() => {
         const fetchPayments = async () => {
             try {
-                const response = await fetch('/api/tenant/dashboard');
+                const response = await fetch('/api/tenant/payments');
                 const result = await response.json();
                 if (result.success) {
-                    setPayments(result.data.recentPayments || []);
-                    setTotalPaid(result.data.recentPayments?.reduce((sum: number, p: Payment) => sum + p.amount, 0) || 0);
+                    setPayments(result.data.payments || []);
+                    setTotalPaid(result.data.totalPaid || 0);
                 }
             } catch (error) {
                 console.error('Error fetching payments:', error);
@@ -48,6 +51,7 @@ export default function TenantPaymentsPage() {
         BANK_TRANSFER: 'Bank Transfer',
         CASH: 'Cash',
         CARD: 'Card',
+        ONLINE: 'Online (Paystack)',
         OTHER: 'Other',
     };
 
@@ -75,6 +79,11 @@ export default function TenantPaymentsPage() {
             render: (row: Payment) => (
                 <Badge variant="info">{methodLabels[row.method] || row.method}</Badge>
             )
+        },
+        {
+            key: 'property',
+            header: 'Property / Unit',
+            render: (row: Payment) => row.property ? `${row.property} - ${row.unit}` : '-'
         },
         {
             key: 'reference',
@@ -135,3 +144,4 @@ export default function TenantPaymentsPage() {
         </TenantLayout>
     );
 }
+

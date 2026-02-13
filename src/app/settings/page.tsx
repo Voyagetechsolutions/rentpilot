@@ -342,40 +342,15 @@ export default function SettingsPage() {
 
                     {activeTab === 'billing' && (
                         <Card title="Subscription & Billing">
-                            <div className="space-y-6">
-                                <div className="p-4 rounded-lg bg-primary-light border border-primary">
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <div className="font-bold text-lg">Free Plan</div>
-                                            <div className="text-sm text-text-secondary">Up to 20 units</div>
-                                        </div>
-                                        <Button>Upgrade Plan</Button>
-                                    </div>
+                            <div className="text-center py-12">
+                                <div className="w-16 h-16 rounded-full bg-primary-light flex items-center justify-center mx-auto mb-4">
+                                    <CreditCard className="w-8 h-8 text-primary" />
                                 </div>
-
-                                <div>
-                                    <h4 className="font-medium mb-4">Usage</h4>
-                                    <div className="space-y-3">
-                                        <div>
-                                            <div className="flex justify-between text-sm mb-1">
-                                                <span>Units</span>
-                                                <span>8 / 20</span>
-                                            </div>
-                                            <div className="h-2 bg-neutral-light rounded-full overflow-hidden">
-                                                <div className="h-full w-2/5 bg-primary rounded-full" />
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <div className="flex justify-between text-sm mb-1">
-                                                <span>Storage</span>
-                                                <span>256 MB / 1 GB</span>
-                                            </div>
-                                            <div className="h-2 bg-neutral-light rounded-full overflow-hidden">
-                                                <div className="h-full w-1/4 bg-primary rounded-full" />
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                                <h3 className="text-lg font-semibold mb-2">Coming Soon</h3>
+                                <p className="text-text-secondary max-w-md mx-auto">
+                                    Subscription plans and billing management will be available in a future update.
+                                    You currently have full access to all features.
+                                </p>
                             </div>
                         </Card>
                     )}

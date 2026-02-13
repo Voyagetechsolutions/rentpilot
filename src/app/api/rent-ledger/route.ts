@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
 
         const leaseIds = leases.map(l => l.id);
 
-        // Fetch rent charges
+        // Fetch rent charges with payment allocations
         const rentCharges = await prisma.rentCharge.findMany({
             where: {
                 leaseId: { in: leaseIds },
@@ -51,6 +51,13 @@ export async function GET(request: NextRequest) {
                                 unitNumber: true,
                                 property: { select: { name: true } }
                             }
+                        }
+                    }
+                },
+                allocations: {
+                    include: {
+                        payment: {
+                            select: { method: true, datePaid: true, reference: true }
                         }
                     }
                 }
