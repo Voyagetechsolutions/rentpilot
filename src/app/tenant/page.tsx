@@ -16,6 +16,8 @@ import {
     AlertCircle,
     CheckCircle2,
     Clock,
+    FileText,
+    Settings,
 } from 'lucide-react';
 
 interface DashboardData {
@@ -49,6 +51,7 @@ interface DashboardData {
         date: string;
         method: string;
         reference: string;
+        status: string;
     }[];
     recentMaintenance: {
         id: string;
@@ -111,17 +114,25 @@ export default function TenantDashboardPage() {
         );
     }
 
-    const getDaysUntilDue = () => {
-        if (!data.rentSummary.nextDueDate) return null;
-        const due = new Date(data.rentSummary.nextDueDate);
-        const today = new Date();
-        const diff = Math.ceil((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-        return diff;
+    const getPaymentStatusBadge = (status: string) => {
+        const variants: Record<string, 'success' | 'warning' | 'info' | 'danger'> = {
+            SUCCESS: 'success',
+            APPROVED: 'success',
+            PENDING: 'warning',
+            FAILED: 'danger',
+            REJECTED: 'danger',
+        };
+        const labels: Record<string, string> = {
+            SUCCESS: 'Paid',
+            APPROVED: 'Approved',
+            PENDING: 'Pending',
+            FAILED: 'Failed',
+            REJECTED: 'Rejected',
+        };
+        return <Badge variant={variants[status] || 'info'}>{labels[status] || status}</Badge>;
     };
 
-    const daysUntilDue = getDaysUntilDue();
-
-    const getStatusBadge = (status: string) => {
+    const getMaintenanceStatusBadge = (status: string) => {
         const variants: Record<string, 'success' | 'warning' | 'info' | 'danger'> = {
             SUBMITTED: 'info',
             IN_REVIEW: 'warning',
@@ -130,6 +141,17 @@ export default function TenantDashboardPage() {
             REJECTED: 'danger',
         };
         return <Badge variant={variants[status] || 'info'}>{status.replace('_', ' ')}</Badge>;
+    };
+
+    const formatNextDueDate = (dateStr: string | null) => {
+        if (!dateStr) return 'N/A';
+        const date = new Date(dateStr);
+        if (isNaN(date.getTime())) return dateStr;
+        const day = date.getDate();
+        const suffixes = ['th', 'st', 'nd', 'rd'];
+        const suffix = ((day % 100) > 10 && (day % 100) < 20) ? 'th' : (suffixes[day % 10] || 'th');
+        const month = date.toLocaleString('default', { month: 'long' });
+        return `${day}${suffix} of ${month}`;
     };
 
     return (
@@ -151,9 +173,10 @@ export default function TenantDashboardPage() {
                     )}
                 </div>
 
-                {/* Rent Summary */}
+                {/* Rent Summary Cards */}
                 {data.lease && (
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {/* Monthly Rent */}
                         <Card className="border-l-4 border-l-primary">
                             <div className="flex items-center gap-4">
                                 <div className="w-12 h-12 rounded-xl bg-primary-light flex items-center justify-center">
@@ -168,174 +191,165 @@ export default function TenantDashboardPage() {
                             </div>
                         </Card>
 
+                        {/* Balance Due */}
                         <Card className={`border-l-4 ${data.rentSummary.balance > 0 ? 'border-l-danger' : 'border-l-success'}`}>
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-4">
-                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${data.rentSummary.balance > 0 ? 'bg-red-100' : 'bg-green-100'
-                                        }`}>
-                                        <CreditCard className={`w-6 h-6 ${data.rentSummary.balance > 0 ? 'text-red-600' : 'text-green-600'
-                                            }`} />
+                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${data.rentSummary.balance > 0 ? 'bg-red-100' : 'bg-green-100'}`}>
+                                        <CreditCard className={`w-6 h-6 ${data.rentSummary.balance > 0 ? 'text-red-600' : 'text-green-600'}`} />
                                     </div>
                                     <div>
+                                        <div className="text-sm text-text-muted">Balance Due</div>
+                                        <div className={`text-2xl font-bold ${data.rentSummary.balance > 0 ? 'text-danger' : 'text-success'}`}>
+                                            {data.rentSummary.balance > 0
+                                                ? `R${data.rentSummary.balance.toLocaleString()}`
+                                                : 'Paid ✓'}
+                                        </div>
                                     </div>
-                                    <div className={`text-2xl font-bold ${data.rentSummary.balance > 0 ? 'text-danger' : 'text-success'
-                                        }`}>
-                                        {data.rentSummary.balance > 0
-                                            ? `R${data.rentSummary.balance.toLocaleString()}`
-                                            : 'Paid ✓'
-                                        }
+                                </div>
+                                <div className="flex flex-col items-end gap-1">
+                                    <Link href="/tenant/pay">
+                                        <Button
+                                            size="sm"
+                                            disabled={!data.rentSummary.canPay}
+                                            title={!data.rentSummary.canPay ? (data.rentSummary.balance <= 0 ? 'Nothing due' : 'Payment opens on the 20th') : 'Pay now'}
+                                        >
+                                            Pay Now
+                                        </Button>
+                                    </Link>
+                                    {!data.rentSummary.canPay && data.rentSummary.balance > 0 && (
+                                        <span className="text-xs text-text-muted">Opens on 20th</span>
+                                    )}
+                                </div>
+                            </div>
+                        </Card>
+
+                        {/* Next Due Date */}
+                        <Card className="border-l-4 border-l-warning">
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-xl bg-orange-100 flex items-center justify-center">
+                                    <Calendar className="w-6 h-6 text-orange-600" />
+                                </div>
+                                <div>
+                                    <div className="text-sm text-text-muted">Next Due Date</div>
+                                    <div className="text-lg font-bold">
+                                        {formatNextDueDate(data.rentSummary.nextDueDate)}
                                     </div>
                                 </div>
                             </div>
-                            <div className="flex flex-col items-end gap-1">
-                                <Link href="/tenant/pay">
-                                    <Button
-                                        size="sm"
-                                        disabled={!data.rentSummary.canPay}
-                                        title={!data.rentSummary.canPay ? (data.rentSummary.balance <= 0 ? "Nothing due" : "Payment opens on the 20th") : "Pay now"}
-                                    >
-                                        Pay Now
-                                    </Button>
-                                </Link>
-                                {!data.rentSummary.canPay && data.rentSummary.balance > 0 && (
-                                    <span className="text-xs text-text-muted">Opens on 20th</span>
-                                )}
-                            </div>
+                        </Card>
                     </div>
+                )}
+
+                {/* Quick Actions */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <Link href="/tenant/payments">
+                        <Card className="hover:border-primary transition-colors cursor-pointer text-center py-6">
+                            <CreditCard className="w-8 h-8 text-primary mx-auto mb-2" />
+                            <div className="font-medium">Payment History</div>
+                        </Card>
+                    </Link>
+                    <Link href="/tenant/maintenance?action=new">
+                        <Card className="hover:border-primary transition-colors cursor-pointer text-center py-6">
+                            <Wrench className="w-8 h-8 text-primary mx-auto mb-2" />
+                            <div className="font-medium">Report Issue</div>
+                        </Card>
+                    </Link>
+                    <Link href="/tenant/lease">
+                        <Card className="hover:border-primary transition-colors cursor-pointer text-center py-6">
+                            <FileText className="w-8 h-8 text-primary mx-auto mb-2" />
+                            <div className="font-medium">View Lease</div>
+                        </Card>
+                    </Link>
+                    <Link href="/tenant/maintenance">
+                        <Card className="hover:border-primary transition-colors cursor-pointer text-center py-6 relative">
+                            <Wrench className="w-8 h-8 text-primary mx-auto mb-2" />
+                            <div className="font-medium">Maintenance</div>
+                            {data.stats.openMaintenanceCount > 0 && (
+                                <span className="absolute top-2 right-2 bg-danger text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                                    {data.stats.openMaintenanceCount}
+                                </span>
+                            )}
+                        </Card>
+                    </Link>
+                </div>
+
+                {/* Recent Activity */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Recent Payments */}
+                    <Card>
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="font-semibold">Recent Payments</h3>
+                            <Link href="/tenant/payments" className="text-primary text-sm hover:underline flex items-center gap-1">
+                                View All <ArrowRight className="w-4 h-4" />
+                            </Link>
+                        </div>
+                        {data.recentPayments.length > 0 ? (
+                            <div className="space-y-3">
+                                {data.recentPayments.map((payment) => (
+                                    <div key={payment.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+                                        <div className="flex items-center gap-3">
+                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${payment.status === 'SUCCESS' ? 'bg-green-100' :
+                                                    payment.status === 'PENDING' ? 'bg-orange-100' :
+                                                        'bg-red-100'
+                                                }`}>
+                                                {payment.status === 'SUCCESS' ? <CheckCircle2 className="w-4 h-4 text-green-600" /> :
+                                                    payment.status === 'PENDING' ? <Clock className="w-4 h-4 text-orange-600" /> :
+                                                        <AlertCircle className="w-4 h-4 text-red-600" />}
+                                            </div>
+                                            <div>
+                                                <div className="font-medium">R{payment.amount.toLocaleString()}</div>
+                                                <div className="text-sm text-text-muted">
+                                                    {new Date(payment.date).toLocaleDateString()}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {getPaymentStatusBadge(payment.status)}
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="text-center py-8 text-text-muted">
+                                <CreditCard className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                                <p>No payment history yet</p>
+                            </div>
+                        )}
                     </Card>
 
-            <Card className="border-l-4 border-l-warning">
-                <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-orange-100 flex items-center justify-center">
-                        <Calendar className="w-6 h-6 text-orange-600" />
-                        <div>
-                            <div className="text-sm text-text-muted">Next Due Date</div>
-                            <div className="text-lg font-bold">
-                                {data.rentSummary.nextDueDate ? (
-                                    (() => {
-                                        const date = new Date(data.rentSummary.nextDueDate);
-                                        if (isNaN(date.getTime())) {
-                                            return data.rentSummary.nextDueDate;
-                                        }
-                                        // Format: "1st of September"
-                                        const day = date.getDate();
-                                        const suffix = ["th", "st", "nd", "rd"][((day % 100) > 10 && (day % 100) < 20) ? 0 : (day % 10) < 4 ? day % 10 : 0];
-                                        const month = date.toLocaleString('default', { month: 'long' });
-                                        return `${day}${suffix} of ${month}`;
-                                    })()
-                                ) : (
-                                    'N/A'
-                                )}
-                            </div>
+                    {/* Recent Maintenance */}
+                    <Card>
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="font-semibold">Maintenance Requests</h3>
+                            <Link href="/tenant/maintenance" className="text-primary text-sm hover:underline flex items-center gap-1">
+                                View All <ArrowRight className="w-4 h-4" />
+                            </Link>
                         </div>
-                    </div>
-            </Card>
-        </div>
-    )
-}
-
-{/* Quick Actions */ }
-<div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-    <Link href="/tenant/payments">
-        <Card className="hover:border-primary transition-colors cursor-pointer text-center py-6">
-            <CreditCard className="w-8 h-8 text-primary mx-auto mb-2" />
-            <div className="font-medium">Payment History</div>
-        </Card>
-    </Link>
-    <Link href="/tenant/maintenance?action=new">
-        <Card className="hover:border-primary transition-colors cursor-pointer text-center py-6">
-            <Wrench className="w-8 h-8 text-primary mx-auto mb-2" />
-            <div className="font-medium">Report Issue</div>
-        </Card>
-    </Link>
-    <Link href="/tenant/lease">
-        <Card className="hover:border-primary transition-colors cursor-pointer text-center py-6">
-            <Home className="w-8 h-8 text-primary mx-auto mb-2" />
-            <div className="font-medium">My Lease</div>
-        </Card>
-    </Link>
-    <Link href="/tenant/maintenance">
-        <Card className="hover:border-primary transition-colors cursor-pointer text-center py-6 relative">
-            <Wrench className="w-8 h-8 text-primary mx-auto mb-2" />
-            <div className="font-medium">Maintenance</div>
-            {data.stats.openMaintenanceCount > 0 && (
-                <span className="absolute top-2 right-2 bg-danger text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                    {data.stats.openMaintenanceCount}
-                </span>
-            )}
-        </Card>
-    </Link>
-</div>
-
-{/* Recent Activity */ }
-<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-    {/* Recent Payments */}
-    <Card>
-        <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold">Recent Payments</h3>
-            <Link href="/tenant/payments" className="text-primary text-sm hover:underline flex items-center gap-1">
-                View All <ArrowRight className="w-4 h-4" />
-            </Link>
-        </div>
-        {data.recentPayments.length > 0 ? (
-            <div className="space-y-3">
-                {data.recentPayments.map((payment) => (
-                    <div key={payment.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
-                        <div className="flex items-center gap-3">
-                            <CheckCircle2 className="w-5 h-5 text-success" />
-                            <div>
-                                <div className="font-medium">R{payment.amount.toLocaleString()}</div>
-                                <div className="text-sm text-text-muted">
-                                    {new Date(payment.date).toLocaleDateString()}
-                                </div>
+                        {data.recentMaintenance.length > 0 ? (
+                            <div className="space-y-3">
+                                {data.recentMaintenance.map((request) => (
+                                    <div key={request.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+                                        <div className="flex items-center gap-3">
+                                            <Clock className="w-5 h-5 text-text-muted" />
+                                            <div>
+                                                <div className="font-medium">{request.title}</div>
+                                                <div className="text-sm text-text-muted">
+                                                    {new Date(request.createdAt).toLocaleDateString()}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {getMaintenanceStatusBadge(request.status)}
+                                    </div>
+                                ))}
                             </div>
-                        </div>
-                        <Badge variant="success">{payment.method}</Badge>
-                    </div>
-                ))}
-            </div>
-        ) : (
-            <div className="text-center py-8 text-text-muted">
-                <CreditCard className="w-10 h-10 mx-auto mb-2 opacity-50" />
-                <p>No payment history yet</p>
-            </div>
-        )}
-    </Card>
-
-    {/* Recent Maintenance */}
-    <Card>
-        <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold">Maintenance Requests</h3>
-            <Link href="/tenant/maintenance" className="text-primary text-sm hover:underline flex items-center gap-1">
-                View All <ArrowRight className="w-4 h-4" />
-            </Link>
-        </div>
-        {data.recentMaintenance.length > 0 ? (
-            <div className="space-y-3">
-                {data.recentMaintenance.map((request) => (
-                    <div key={request.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
-                        <div className="flex items-center gap-3">
-                            <Clock className="w-5 h-5 text-text-muted" />
-                            <div>
-                                <div className="font-medium">{request.title}</div>
-                                <div className="text-sm text-text-muted">
-                                    {new Date(request.createdAt).toLocaleDateString()}
-                                </div>
+                        ) : (
+                            <div className="text-center py-8 text-text-muted">
+                                <Wrench className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                                <p>No maintenance requests</p>
                             </div>
-                        </div>
-                        {getStatusBadge(request.status)}
-                    </div>
-                ))}
+                        )}
+                    </Card>
+                </div>
             </div>
-        ) : (
-            <div className="text-center py-8 text-text-muted">
-                <Wrench className="w-10 h-10 mx-auto mb-2 opacity-50" />
-                <p>No maintenance requests</p>
-            </div>
-        )}
-    </Card>
-</div>
-            </div >
-        </TenantLayout >
+        </TenantLayout>
     );
 }

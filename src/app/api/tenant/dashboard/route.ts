@@ -121,6 +121,45 @@ export async function GET() {
             }
         });
 
+        // Fetch online payments for this tenant
+        const onlinePayments = await prisma.onlinePayment.findMany({
+            where: { tenantId: tenant.id },
+            orderBy: { createdAt: 'desc' },
+            take: 10,
+        });
+
+        // Merge manual payments (confirmed = SUCCESS) with online payments (have their own status)
+        const manualPayments = tenant.payments.map(p => ({
+            id: p.id,
+            amount: p.amount,
+            date: p.datePaid,
+            method: p.method,
+            reference: p.reference || '',
+            status: 'SUCCESS' as string, // Manual payments recorded by landlord are confirmed
+            source: 'manual' as string,
+        }));
+
+        const onlinePaymentsMapped = onlinePayments.map(op => ({
+            id: op.id,
+            amount: op.amount / 100, // Paystack stores in cents
+            date: op.paidAt || op.createdAt,
+            method: 'ONLINE',
+            reference: op.reference,
+            status: op.status, // PENDING, SUCCESS, FAILED
+            source: 'online' as string,
+        }));
+
+        // Combine, deduplicate by reference, sort by date desc
+        const allPaymentsMap = new Map<string, typeof manualPayments[0]>();
+        for (const p of [...manualPayments, ...onlinePaymentsMapped]) {
+            if (!allPaymentsMap.has(p.reference || p.id)) {
+                allPaymentsMap.set(p.reference || p.id, p);
+            }
+        }
+        const recentPayments = Array.from(allPaymentsMap.values())
+            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+            .slice(0, 10);
+
         const dashboardData = {
             tenant: {
                 id: tenant.id,
@@ -140,23 +179,7 @@ export async function GET() {
             } : null,
             rentSummary,
             documents,
-            recentPayments: tenant.payments.map(p => ({
-                id: p.id,
-                amount: p.amount,
-                date: p.datePaid,
-                method: p.method,
-                reference: p.reference,
-                // Status is not in Payment model in schema provided? 
-                // Ah, Payment model has no status. TransactionLedger does.
-                // But user asked for "pending" status on payment history.
-                // Schema check: Payment model lines 188-202. No status.
-                // OnlinePayment has status.
-                // We might need to infer status or add it. 
-                // Plan: Assume manual payments are 'PENDING' approval if we implement approval.
-                // But Payment table usually means "Recorded Payment".
-                // If I add "Proof of Payment", I might need a status field on Payment, or use a separate table/flag.
-                // For now, let's just return what we have.
-            })),
+            recentPayments,
             recentMaintenance: tenant.maintenance.map(m => ({
                 id: m.id,
                 title: m.title,
