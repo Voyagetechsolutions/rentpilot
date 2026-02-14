@@ -202,3 +202,117 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ success: false, error: 'Failed to create tenant' }, { status: 500 });
     }
 }
+
+// DELETE /api/tenants?id=xxx - Remove a tenant (end lease, vacate unit, delete tenant)
+export async function DELETE(request: NextRequest) {
+    try {
+        const session = await getServerSession(authOptions);
+        if (!session?.user) {
+            return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const userId = (session.user as { id?: string }).id;
+        const { searchParams } = new URL(request.url);
+        const tenantId = searchParams.get('id');
+
+        if (!tenantId) {
+            return NextResponse.json({ success: false, error: 'Tenant ID is required' }, { status: 400 });
+        }
+
+        // Fetch tenant with leases to verify landlord ownership
+        const tenant = await prisma.tenant.findUnique({
+            where: { id: tenantId },
+            include: {
+                user: true,
+                leases: {
+                    include: {
+                        unit: { include: { property: true } },
+                    },
+                },
+            },
+        });
+
+        if (!tenant) {
+            return NextResponse.json({ success: false, error: 'Tenant not found' }, { status: 404 });
+        }
+
+        // Verify that this landlord owns at least one property the tenant is linked to
+        const landlordLeases = tenant.leases.filter(
+            (l) => l.unit.property.landlordId === userId
+        );
+
+        if (landlordLeases.length === 0) {
+            // Also check invitations
+            const invitation = await prisma.tenantInvitation.findFirst({
+                where: {
+                    email: tenant.user.email,
+                    landlordId: userId,
+                },
+            });
+            if (!invitation) {
+                return NextResponse.json({ success: false, error: 'Unauthorized - tenant not linked to your properties' }, { status: 403 });
+            }
+        }
+
+        // 1. End all active leases for this tenant on landlord's properties
+        const activeLeases = landlordLeases.filter((l) => l.status === 'ACTIVE');
+        for (const lease of activeLeases) {
+            await prisma.lease.update({
+                where: { id: lease.id },
+                data: { status: 'TERMINATED' },
+            });
+
+            // 2. Set unit back to VACANT
+            await prisma.unit.update({
+                where: { id: lease.unitId },
+                data: { status: 'VACANT' },
+            });
+        }
+
+        // 3. Cancel any pending invitations for this tenant from this landlord
+        await prisma.tenantInvitation.updateMany({
+            where: {
+                email: tenant.user.email,
+                landlordId: userId,
+                status: 'PENDING',
+            },
+            data: { status: 'CANCELLED' },
+        });
+
+        // 4. Delete tenant record (cascades to payments, maintenance requests, etc.)
+        await prisma.tenant.delete({
+            where: { id: tenantId },
+        });
+
+        // 5. Delete the linked User record if they are a TENANT-only user
+        if (tenant.user.role === 'TENANT') {
+            await prisma.user.delete({
+                where: { id: tenant.userId },
+            });
+        }
+
+        // Log activity
+        await prisma.activityLog.create({
+            data: {
+                userId,
+                action: 'TENANT_REMOVED',
+                entityType: 'Tenant',
+                entityId: tenantId,
+                details: JSON.stringify({
+                    tenantName: tenant.fullName,
+                    leasesTerminated: activeLeases.length,
+                }),
+            },
+        });
+
+        return NextResponse.json({
+            success: true,
+            message: `Tenant ${tenant.fullName} has been removed. ${activeLeases.length} lease(s) terminated, unit(s) set to vacant.`,
+        });
+
+    } catch (error) {
+        console.error('Error removing tenant:', error);
+        return NextResponse.json({ success: false, error: 'Failed to remove tenant' }, { status: 500 });
+    }
+}
+

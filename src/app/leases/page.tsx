@@ -59,6 +59,25 @@ export default function LeasesPage() {
         await createLease(formData);
     };
 
+    const handleDownloadPdf = async (leaseId: string, tenantName: string) => {
+        try {
+            const response = await fetch(`/api/leases/${leaseId}/pdf`);
+            if (!response.ok) throw new Error('Failed to download PDF');
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Lease_Agreement_${tenantName.replace(/\s+/g, '_')}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        } catch (err) {
+            console.error('Failed to download lease PDF:', err);
+            alert('Failed to download lease PDF. Please try again.');
+        }
+    };
+
     // Filter to only vacant units
     const vacantUnits = units?.filter(u => u.status === 'VACANT') || [];
 
@@ -98,6 +117,20 @@ export default function LeasesPage() {
                 <Badge variant={row.status === 'ACTIVE' ? 'occupied' : 'vacant'}>
                     {row.status}
                 </Badge>
+            )
+        },
+        {
+            key: 'actions',
+            header: 'Actions',
+            render: (row: NonNullable<typeof leases>[0]) => (
+                <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => handleDownloadPdf(row.id, row.tenant?.fullName || 'Tenant')}
+                >
+                    <Download className="w-4 h-4" />
+                    PDF
+                </Button>
             )
         },
     ];

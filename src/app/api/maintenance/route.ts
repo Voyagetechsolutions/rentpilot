@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { notifications } from '@/lib/notifications';
 
 // GET /api/maintenance - List all maintenance requests for authenticated user's properties
 export async function GET(request: NextRequest) {
@@ -55,6 +56,7 @@ export async function POST(request: NextRequest) {
         // Verify unit ownership
         const unit = await prisma.unit.findFirst({
             where: { id: unitId, property: { landlordId: userId } },
+            include: { property: { include: { landlord: true } } },
         });
         if (!unit) {
             return NextResponse.json({ success: false, error: 'Unit not found' }, { status: 404 });
@@ -87,6 +89,30 @@ export async function POST(request: NextRequest) {
                 attachments: '[]',
             },
         });
+
+        // Send email notification to landlord
+        const landlordEmail = unit.property.landlord?.email;
+        if (landlordEmail) {
+            const tenant = await prisma.tenant.findUnique({ where: { id: resolvedTenantId } });
+            await notifications.sendEmail({
+                to: landlordEmail,
+                subject: `New Maintenance Request - ${title}`,
+                html: `
+                    <h1>New Maintenance Request</h1>
+                    <p>A new maintenance request has been submitted:</p>
+                    <table style="border-collapse: collapse; width: 100%;">
+                        <tr><td style="padding: 8px; font-weight: bold;">Title:</td><td style="padding: 8px;">${title}</td></tr>
+                        <tr><td style="padding: 8px; font-weight: bold;">Category:</td><td style="padding: 8px;">${category}</td></tr>
+                        <tr><td style="padding: 8px; font-weight: bold;">Priority:</td><td style="padding: 8px;">${priority || 'MEDIUM'}</td></tr>
+                        <tr><td style="padding: 8px; font-weight: bold;">Property:</td><td style="padding: 8px;">${unit.property.name}</td></tr>
+                        <tr><td style="padding: 8px; font-weight: bold;">Unit:</td><td style="padding: 8px;">${unit.unitNumber}</td></tr>
+                        <tr><td style="padding: 8px; font-weight: bold;">Tenant:</td><td style="padding: 8px;">${tenant?.fullName || 'Unknown'}</td></tr>
+                        ${description ? `<tr><td style="padding: 8px; font-weight: bold;">Description:</td><td style="padding: 8px;">${description}</td></tr>` : ''}
+                    </table>
+                    <p style="margin-top: 16px;">Log in to RentPilot to review and respond to this request.</p>
+                `,
+            });
+        }
 
         return NextResponse.json({ success: true, data: maintenanceRequest }, { status: 201 });
     } catch (error) {

@@ -31,6 +31,7 @@ import {
     Send,
     Copy,
     CheckCircle2,
+    AlertTriangle,
 } from 'lucide-react';
 
 interface InviteFormData {
@@ -60,6 +61,11 @@ export default function TenantsPage() {
     });
     const [invitationResult, setInvitationResult] = useState<InvitationResult | null>(null);
     const [copied, setCopied] = useState(false);
+
+    // Remove tenant state
+    const [showRemoveModal, setShowRemoveModal] = useState(false);
+    const [tenantToRemove, setTenantToRemove] = useState<{ id: string; fullName: string } | null>(null);
+    const [removing, setRemoving] = useState(false);
 
     // Auto-open modal if action=new in URL
     useEffect(() => {
@@ -94,6 +100,33 @@ export default function TenantsPage() {
         setInvitationResult(null);
         setCopied(false);
         refetch();
+    };
+
+    const handleRemoveClick = (tenant: { id: string; fullName: string }) => {
+        setTenantToRemove(tenant);
+        setShowRemoveModal(true);
+    };
+
+    const handleRemoveConfirm = async () => {
+        if (!tenantToRemove) return;
+        setRemoving(true);
+        try {
+            const response = await fetch(`/api/tenants?id=${tenantToRemove.id}`, {
+                method: 'DELETE',
+            });
+            const result = await response.json();
+            if (result.success) {
+                setShowRemoveModal(false);
+                setTenantToRemove(null);
+                refetch();
+            } else {
+                alert(result.error || 'Failed to remove tenant');
+            }
+        } catch {
+            alert('Failed to remove tenant. Please try again.');
+        } finally {
+            setRemoving(false);
+        }
     };
 
     const columns = [
@@ -166,7 +199,13 @@ export default function TenantsPage() {
                             <DropdownItem icon={<Mail className="w-4 h-4" />}>Send Email</DropdownItem>
                             <DropdownItem icon={<Edit className="w-4 h-4" />}>Edit</DropdownItem>
                             <DropdownDivider />
-                            <DropdownItem icon={<Trash2 className="w-4 h-4" />} danger>Delete</DropdownItem>
+                            <DropdownItem
+                                icon={<Trash2 className="w-4 h-4" />}
+                                danger
+                                onClick={() => handleRemoveClick({ id: row.id, fullName: row.fullName })}
+                            >
+                                Remove Tenant
+                            </DropdownItem>
                         </Dropdown>
                     </div>
                 );
@@ -333,6 +372,57 @@ export default function TenantsPage() {
                         )}
                     </div>
                 )}
+            </Modal>
+
+            {/* Remove Tenant Confirmation Modal */}
+            <Modal
+                isOpen={showRemoveModal}
+                onClose={() => { setShowRemoveModal(false); setTenantToRemove(null); }}
+                title="Remove Tenant"
+                footer={
+                    <>
+                        <Button variant="secondary" onClick={() => { setShowRemoveModal(false); setTenantToRemove(null); }}>
+                            Cancel
+                        </Button>
+                        <Button
+                            variant="danger"
+                            onClick={handleRemoveConfirm}
+                            disabled={removing}
+                        >
+                            {removing ? (
+                                <>
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    Removing...
+                                </>
+                            ) : (
+                                <>
+                                    <Trash2 className="w-4 h-4" />
+                                    Remove Tenant
+                                </>
+                            )}
+                        </Button>
+                    </>
+                }
+            >
+                <div className="space-y-4">
+                    <div className="flex items-start gap-3 p-4 bg-red-50 rounded-lg">
+                        <AlertTriangle className="w-6 h-6 text-red-500 flex-shrink-0 mt-0.5" />
+                        <div>
+                            <p className="font-medium text-red-800">This action cannot be undone</p>
+                            <p className="text-sm text-red-600 mt-1">
+                                Removing <strong>{tenantToRemove?.fullName}</strong> will:
+                            </p>
+                            <ul className="text-sm text-red-600 mt-2 list-disc list-inside space-y-1">
+                                <li>Terminate any active lease agreements</li>
+                                <li>Set the associated unit(s) back to vacant</li>
+                                <li>Delete the tenant&apos;s account and all related records</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <p className="text-sm text-text-secondary">
+                        Are you sure you want to remove this tenant?
+                    </p>
+                </div>
             </Modal>
         </AppShell>
     );

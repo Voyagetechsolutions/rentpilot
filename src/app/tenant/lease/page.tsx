@@ -12,6 +12,7 @@ import {
     AlertCircle,
     FileText,
     MapPin,
+    Download,
 } from 'lucide-react';
 
 interface LeaseData {
@@ -40,6 +41,30 @@ export default function TenantLeasePage() {
     const [documents, setDocuments] = useState<Document[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [downloadingPdf, setDownloadingPdf] = useState(false);
+
+    const handleDownloadPdf = async () => {
+        if (!lease) return;
+        setDownloadingPdf(true);
+        try {
+            const response = await fetch(`/api/leases/${lease.id}/pdf`);
+            if (!response.ok) throw new Error('Failed to download PDF');
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Lease_Agreement_${lease.property}_Unit${lease.unit}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        } catch (err) {
+            console.error('Failed to download lease PDF:', err);
+            alert('Failed to download lease PDF. Please try again.');
+        } finally {
+            setDownloadingPdf(false);
+        }
+    };
 
     useEffect(() => {
         const fetchLease = async () => {
@@ -196,6 +221,23 @@ export default function TenantLeasePage() {
                             </div>
                             <Badge variant="info">{totalMonths} months</Badge>
                         </div>
+                    </div>
+                </Card>
+
+                {/* Download Lease Agreement */}
+                <Card>
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h3 className="font-semibold">Lease Agreement PDF</h3>
+                            <p className="text-sm text-text-muted mt-1">Download a complete copy of your lease agreement</p>
+                        </div>
+                        <Button onClick={handleDownloadPdf} disabled={downloadingPdf}>
+                            {downloadingPdf ? (
+                                <><Loader2 className="w-4 h-4 animate-spin" /> Generating...</>
+                            ) : (
+                                <><Download className="w-4 h-4" /> Download Lease Agreement</>
+                            )}
+                        </Button>
                     </div>
                 </Card>
 
