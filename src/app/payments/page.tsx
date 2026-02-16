@@ -116,7 +116,7 @@ export default function PaymentsPage() {
         {
             key: 'datePaid',
             header: 'Date Paid',
-            render: (row: NonNullable<typeof payments>[0]) => new Date(row.datePaid).toLocaleDateString()
+            render: (row: NonNullable<typeof payments>[0]) => row.datePaid ? new Date(row.datePaid).toLocaleDateString() : '—'
         },
         {
             key: 'tenant',
@@ -134,7 +134,7 @@ export default function PaymentsPage() {
             header: 'Amount',
             render: (row: NonNullable<typeof payments>[0]) => (
                 <span className={`font-semibold ${row.status === 'PENDING' ? 'text-warning' : 'text-success'}`}>
-                    R{row.amount.toLocaleString()}
+                    R{(row.amount || 0).toLocaleString()}
                 </span>
             )
         },

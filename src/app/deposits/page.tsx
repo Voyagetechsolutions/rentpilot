@@ -189,7 +189,7 @@ export default function DepositsPage() {
                         <div>
                             <div className="text-sm text-text-secondary">Total Held</div>
                             <div className="text-xl font-bold">
-                                R{deposits.filter(d => d.status === 'HELD').reduce((sum, d) => sum + d.amount, 0).toLocaleString()}
+                                R{deposits.filter(d => d.status === 'HELD').reduce((sum, d) => sum + (d.amount || 0), 0).toLocaleString()}
                             </div>
                         </div>
                     </div>
@@ -202,7 +202,7 @@ export default function DepositsPage() {
                         <div>
                             <div className="text-sm text-text-secondary">Accrued Interest</div>
                             <div className="text-xl font-bold">
-                                R{deposits.reduce((sum, d) => sum + d.accruedInterest, 0).toLocaleString()}
+                                R{deposits.reduce((sum, d) => sum + (d.accruedInterest || 0), 0).toLocaleString()}
                             </div>
                         </div>
                     </div>
@@ -290,7 +290,7 @@ export default function DepositsPage() {
                                 </div>
                                 <div className="text-right">
                                     <div className="text-2xl font-bold text-primary">
-                                        R{deposit.amount.toLocaleString()}
+                                        R{(deposit.amount || 0).toLocaleString()}
                                     </div>
                                     <div className="text-sm text-text-secondary">
                                         + R{calculateTotalWithInterest(deposit).toFixed(2)} with interest

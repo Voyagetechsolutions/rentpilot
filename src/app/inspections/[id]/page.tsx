@@ -17,10 +17,10 @@ import {
     Calendar,
     CheckCircle2,
     Clock,
-    Camera,
     Loader2,
 } from 'lucide-react';
 import Link from 'next/link';
+import { InspectionPhotoCapture } from '@/components/inspections/InspectionPhotoCapture';
 
 interface InspectionItem {
     id: string;
@@ -28,7 +28,13 @@ interface InspectionItem {
     item: string;
     condition: string;
     notes: string | null;
-    photos: string;
+    photos: string; // JSON string of photo URLs
+}
+
+interface EditedItem {
+    condition: string;
+    notes: string;
+    photos: string[]; // Parsed array of photo URLs
 }
 
 interface Inspection {
@@ -39,6 +45,7 @@ interface Inspection {
     status: string;
     notes: string | null;
     unit: {
+        id: string;
         unitNumber: string;
         property: {
             name: string;
@@ -102,7 +109,7 @@ export default function InspectionDetailPage() {
     const [inspection, setInspection] = useState<Inspection | null>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    const [editedItems, setEditedItems] = useState<Record<string, { condition: string; notes: string }>>({});
+    const [editedItems, setEditedItems] = useState<Record<string, EditedItem>>({});
     const [notes, setNotes] = useState('');
     const [status, setStatus] = useState('');
 
@@ -118,10 +125,20 @@ export default function InspectionDetailPage() {
                 setInspection(result.data);
                 setNotes(result.data.notes || '');
                 setStatus(result.data.status);
-                // Initialize edited items
-                const items: Record<string, { condition: string; notes: string }> = {};
+                // Initialize edited items with photos
+                const items: Record<string, EditedItem> = {};
                 result.data.items.forEach((item: InspectionItem) => {
-                    items[item.id] = { condition: item.condition, notes: item.notes || '' };
+                    let photos: string[] = [];
+                    try {
+                        photos = JSON.parse(item.photos || '[]');
+                    } catch {
+                        photos = [];
+                    }
+                    items[item.id] = {
+                        condition: item.condition,
+                        notes: item.notes || '',
+                        photos,
+                    };
                 });
                 setEditedItems(items);
             }
@@ -142,6 +159,16 @@ export default function InspectionDetailPage() {
         }));
     };
 
+    const handlePhotosChange = (itemId: string, photos: string[]) => {
+        setEditedItems((prev) => ({
+            ...prev,
+            [itemId]: {
+                ...prev[itemId],
+                photos,
+            },
+        }));
+    };
+
     const handleSave = async () => {
         setSaving(true);
         try {
@@ -149,6 +176,7 @@ export default function InspectionDetailPage() {
                 id,
                 condition: data.condition,
                 notes: data.notes || null,
+                photos: JSON.stringify(data.photos || []),
             }));
 
             const response = await fetch(`/api/inspections/${inspectionId}`, {
@@ -235,7 +263,7 @@ export default function InspectionDetailPage() {
                             )}
                             <span className="flex items-center gap-1">
                                 <Calendar className="w-4 h-4" />
-                                {new Date(inspection.scheduledDate).toLocaleDateString()}
+                                {inspection.scheduledDate ? new Date(inspection.scheduledDate).toLocaleDateString() : 'Not scheduled'}
                             </span>
                         </div>
                     </div>
@@ -307,9 +335,12 @@ export default function InspectionDetailPage() {
                                             placeholder="Notes..."
                                             className="md:w-48"
                                         />
-                                        <Button variant="secondary" size="sm" disabled>
-                                            <Camera className="w-4 h-4" />
-                                        </Button>
+                                        <InspectionPhotoCapture
+                                            itemId={item.id}
+                                            photos={editedItems[item.id]?.photos || []}
+                                            onPhotosChange={handlePhotosChange}
+                                            unitId={inspection.unit.id}
+                                        />
                                     </div>
                                 </div>
                             ))}

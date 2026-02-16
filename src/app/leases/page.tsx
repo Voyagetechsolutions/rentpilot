@@ -98,17 +98,17 @@ export default function LeasesPage() {
         {
             key: 'rentAmount',
             header: 'Rent',
-            render: (row: NonNullable<typeof leases>[0]) => `R${row.rentAmount.toLocaleString()}`
+            render: (row: NonNullable<typeof leases>[0]) => `R${(row.rentAmount || 0).toLocaleString()}`
         },
         {
             key: 'startDate',
             header: 'Start Date',
-            render: (row: NonNullable<typeof leases>[0]) => new Date(row.startDate).toLocaleDateString()
+            render: (row: NonNullable<typeof leases>[0]) => row.startDate ? new Date(row.startDate).toLocaleDateString() : '—'
         },
         {
             key: 'endDate',
             header: 'End Date',
-            render: (row: NonNullable<typeof leases>[0]) => new Date(row.endDate).toLocaleDateString()
+            render: (row: NonNullable<typeof leases>[0]) => row.endDate ? new Date(row.endDate).toLocaleDateString() : '—'
         },
         {
             key: 'status',

@@ -178,8 +178,8 @@ export default function DashboardPage() {
                                         <div className="text-sm text-text-secondary">{item.unit}</div>
                                     </div>
                                     <div className="text-right">
-                                        <div className="font-semibold text-danger">R{item.amount.toLocaleString()}</div>
-                                        <div className="text-xs text-text-muted">Due {new Date(item.dueDate).toLocaleDateString()}</div>
+                                        <div className="font-semibold text-danger">R{(item.amount || 0).toLocaleString()}</div>
+                                        <div className="text-xs text-text-muted">Due {item.dueDate ? new Date(item.dueDate).toLocaleDateString() : 'N/A'}</div>
                                     </div>
                                 </div>
                             ))}

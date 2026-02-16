@@ -243,7 +243,7 @@ export function Header({ title, breadcrumbs }: HeaderProps) {
                                         <div className="font-medium text-sm">{notification.title}</div>
                                         <div className="text-xs text-text-muted">{notification.message}</div>
                                         <div className="text-[10px] text-text-muted mt-1">
-                                            {new Date(notification.createdAt).toLocaleDateString()}
+                                            {notification.createdAt ? new Date(notification.createdAt).toLocaleDateString() : ''}
                                         </div>
                                     </div>
                                 </DropdownItem>

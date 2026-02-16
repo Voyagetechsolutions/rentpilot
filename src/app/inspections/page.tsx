@@ -267,7 +267,7 @@ export default function InspectionsPage() {
                                                 )}
                                                 <span className="flex items-center gap-1">
                                                     <Calendar className="w-4 h-4" />
-                                                    {new Date(inspection.scheduledDate).toLocaleDateString()}
+                                                    {inspection.scheduledDate ? new Date(inspection.scheduledDate).toLocaleDateString() : 'Not scheduled'}
                                                 </span>
                                             </div>
                                         </div>

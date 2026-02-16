@@ -171,7 +171,7 @@ export default function MaintenancePage() {
         {
             key: 'createdAt',
             header: 'Created',
-            render: (row: NonNullable<typeof tickets>[0]) => new Date(row.createdAt).toLocaleDateString()
+            render: (row: NonNullable<typeof tickets>[0]) => row.createdAt ? new Date(row.createdAt).toLocaleDateString() : '—'
         },
         {
             key: 'actions',
