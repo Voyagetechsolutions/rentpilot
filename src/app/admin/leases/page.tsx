@@ -175,8 +175,8 @@ export default function AdminLeasesPage() {
                                                 <Users className="w-5 h-5 text-white" />
                                             </div>
                                             <div>
-                                                <div className="font-medium">{lease.tenant.fullName}</div>
-                                                <div className="text-sm text-gray-400">{lease.tenant.email}</div>
+                                                <div className="font-medium">{lease.tenant?.fullName || 'Unknown'}</div>
+                                                <div className="text-sm text-gray-400">{lease.tenant?.email || '—'}</div>
                                             </div>
                                         </div>
                                     </td>
@@ -184,24 +184,24 @@ export default function AdminLeasesPage() {
                                         <div className="flex items-center gap-2">
                                             <Home className="w-4 h-4 text-gray-400" />
                                             <div>
-                                                <div className="text-sm">{lease.unit.property.name}</div>
-                                                <div className="text-xs text-gray-400">Unit {lease.unit.unitNumber}</div>
+                                                <div className="text-sm">{lease.unit?.property?.name || 'Unknown'}</div>
+                                                <div className="text-xs text-gray-400">Unit {lease.unit?.unitNumber || '—'}</div>
                                             </div>
                                         </div>
                                     </td>
                                     <td className="px-4 py-4 text-sm text-gray-300">
-                                        {lease.unit.property.landlord.name || lease.unit.property.landlord.email}
+                                        {lease.unit?.property?.landlord?.name || lease.unit?.property?.landlord?.email || 'Unknown'}
                                     </td>
                                     <td className="px-4 py-4">
                                         <div className="flex items-center gap-1 font-bold text-green-400">
                                             <DollarSign className="w-4 h-4" />
-                                            R{lease.monthlyRent.toLocaleString()}
+                                            R{(lease.monthlyRent || 0).toLocaleString()}
                                         </div>
                                     </td>
                                     <td className="px-4 py-4">
                                         <div className="flex items-center gap-1 text-sm text-gray-400">
                                             <Calendar className="w-4 h-4" />
-                                            {new Date(lease.startDate).toLocaleDateString()} - {new Date(lease.endDate).toLocaleDateString()}
+                                            {lease.startDate ? new Date(lease.startDate).toLocaleDateString() : '—'} - {lease.endDate ? new Date(lease.endDate).toLocaleDateString() : '—'}
                                         </div>
                                     </td>
                                     <td className="px-4 py-4">

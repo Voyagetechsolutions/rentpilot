@@ -53,11 +53,11 @@ export default function AdminSettingsPage() {
                 // Fetch system info
                 const response = await fetch('/api/admin/stats');
                 const result = await response.json();
-                if (result.success) {
+                if (result.success && result.data) {
                     setSystemInfo({
-                        totalUsers: result.data.users.total,
-                        totalProperties: result.data.properties,
-                        totalPayments: result.data.payments.total,
+                        totalUsers: result.data.users?.total || 0,
+                        totalProperties: result.data.properties?.total || 0,
+                        totalPayments: result.data.revenue?.thisMonth ? Math.round(result.data.revenue.thisMonth / 1000) : 0,
                         databaseSize: 'SQLite',
                         uptime: '99.9%',
                     });
