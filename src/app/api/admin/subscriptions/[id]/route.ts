@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import prisma from '@/lib/prisma';
-import { PLAN_CONFIG } from '../route';
+import { PLAN_CONFIG } from '@/lib/subscription';
 
 // GET /api/admin/subscriptions/[id] - Get subscription details
 export async function GET(

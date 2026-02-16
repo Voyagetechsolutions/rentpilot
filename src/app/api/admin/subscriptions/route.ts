@@ -2,54 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import prisma from '@/lib/prisma';
-
-// Plan configurations
-export const PLAN_CONFIG = {
-    STARTER: {
-        name: 'Starter',
-        price: 599,
-        maxUnits: 10,
-        maxProperties: 5,
-        hasAutomation: false,
-        hasAdvancedFinance: false,
-        hasApiAccess: false,
-        hasPrioritySupport: false,
-        hasCustomIntegrations: false,
-    },
-    GROWTH: {
-        name: 'Growth',
-        price: 1199,
-        maxUnits: 50,
-        maxProperties: 20,
-        hasAutomation: true,
-        hasAdvancedFinance: false,
-        hasApiAccess: false,
-        hasPrioritySupport: false,
-        hasCustomIntegrations: false,
-    },
-    PRO: {
-        name: 'Pro',
-        price: 2999,
-        maxUnits: 200,
-        maxProperties: 100,
-        hasAutomation: true,
-        hasAdvancedFinance: true,
-        hasApiAccess: true,
-        hasPrioritySupport: true,
-        hasCustomIntegrations: false,
-    },
-    ENTERPRISE: {
-        name: 'Enterprise',
-        price: 7999,
-        maxUnits: 999999,
-        maxProperties: 999999,
-        hasAutomation: true,
-        hasAdvancedFinance: true,
-        hasApiAccess: true,
-        hasPrioritySupport: true,
-        hasCustomIntegrations: true,
-    },
-};
+import { PLAN_CONFIG } from '@/lib/subscription';
 
 // GET /api/admin/subscriptions - Get all landlord subscriptions
 export async function GET(request: NextRequest) {
