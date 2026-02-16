@@ -107,10 +107,27 @@ export async function GET(request: NextRequest) {
                     unit: { include: { property: true } }
                 }
             });
+            // Look up proof of payment from ActivityLog
+            const activityLog = await prisma.activityLog.findFirst({
+                where: {
+                    action: 'PAYMENT_PROOF_UPLOADED',
+                    entityType: 'TransactionLedger',
+                    entityId: p.id,
+                },
+                orderBy: { createdAt: 'desc' },
+            });
+            let proofUrl: string | null = null;
+            if (activityLog?.details) {
+                try {
+                    const details = JSON.parse(activityLog.details);
+                    proofUrl = details.fileUrl || null;
+                } catch { /* ignore parse errors */ }
+            }
             return {
                 ...p,
                 lease,
-                tenant: lease?.tenant
+                tenant: lease?.tenant,
+                proofUrl,
             };
         }));
 
@@ -122,9 +139,7 @@ export async function GET(request: NextRequest) {
             method: p.paymentMethod,
             datePaid: p.createdAt,
             reference: p.reference,
-            proofUrl: null, // Ledger doesn't have proofUrl directly? 
-            // Wait, ActivityLog might have it. 
-            // Or we just show "Pending" and don't show proof URL in list yet?
+            proofUrl: p.proofUrl,
             status: p.status,
             source: 'ledger',
             tenant: p.tenant,

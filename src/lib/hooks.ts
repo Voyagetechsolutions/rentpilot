@@ -223,6 +223,7 @@ interface Payment {
     method: string;
     datePaid: string;
     reference: string;
+    proofUrl: string | null;
     status: 'SUCCESS' | 'PENDING' | 'FAILED';
     source: 'manual' | 'online' | 'ledger';
     tenant: Tenant;
@@ -238,6 +239,7 @@ interface MaintenanceRequest {
     category: string;
     priority: string;
     status: string;
+    scheduledDate: string | null;
     unit: Unit;
     tenant: Tenant;
     createdAt: string;

@@ -19,6 +19,7 @@ import {
     Download,
     CreditCard,
     Loader2,
+    Eye,
 } from 'lucide-react';
 
 const methodOptions = [
@@ -160,15 +161,29 @@ export default function PaymentsPage() {
             key: 'actions',
             header: 'Actions',
             render: (row: NonNullable<typeof payments>[0]) => (
-                row.status === 'PENDING' && row.source === 'ledger' ? (
-                    <Button
-                        size="sm"
-                        onClick={() => handleApprove(row.id)}
-                        disabled={approving}
-                    >
-                        {approving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Approve'}
-                    </Button>
-                ) : null
+                <div className="flex items-center gap-2">
+                    {row.status === 'PENDING' && (
+                        <Button
+                            size="sm"
+                            onClick={() => handleApprove(row.id)}
+                            disabled={approving}
+                        >
+                            {approving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Approve'}
+                        </Button>
+                    )}
+                    {row.proofUrl && (
+                        <a
+                            href={row.proofUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80"
+                            title="View Proof of Payment"
+                        >
+                            <Eye className="w-4 h-4" />
+                            Proof
+                        </a>
+                    )}
+                </div>
             )
         }
     ];

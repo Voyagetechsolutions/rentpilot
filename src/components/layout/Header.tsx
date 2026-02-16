@@ -32,12 +32,44 @@ export function Header({ title, breadcrumbs }: HeaderProps) {
     const [showSearchResults, setShowSearchResults] = useState(false);
     const [notifications, setNotifications] = useState<any[]>([]);
     const [unreadCount, setUnreadCount] = useState(0);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const [searchResults, setSearchResults] = useState<any>(null);
+    const [searching, setSearching] = useState(false);
+    const searchTimerRef = React.useRef<NodeJS.Timeout | null>(null);
 
     React.useEffect(() => {
         if (session?.user) {
             fetchNotifications();
         }
     }, [session]);
+
+    // Debounced search
+    React.useEffect(() => {
+        if (searchTimerRef.current) {
+            clearTimeout(searchTimerRef.current);
+        }
+        if (!searchQuery || searchQuery.length < 2) {
+            setSearchResults(null);
+            return;
+        }
+        searchTimerRef.current = setTimeout(async () => {
+            setSearching(true);
+            try {
+                const response = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}`);
+                const result = await response.json();
+                if (result.success) {
+                    setSearchResults(result.data);
+                }
+            } catch (error) {
+                console.error('Search failed:', error);
+            } finally {
+                setSearching(false);
+            }
+        }, 300);
+        return () => {
+            if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+        };
+    }, [searchQuery]);
 
     const fetchNotifications = async () => {
         try {
@@ -59,6 +91,14 @@ export function Header({ title, breadcrumbs }: HeaderProps) {
     const userName = session?.user?.name || 'User';
     const userEmail = session?.user?.email || '';
     const userInitial = userName.charAt(0).toUpperCase();
+
+    const hasResults = searchResults && (
+        searchResults.tenants?.length > 0 ||
+        searchResults.units?.length > 0 ||
+        searchResults.leases?.length > 0 ||
+        searchResults.payments?.length > 0 ||
+        searchResults.maintenance?.length > 0
+    );
 
     return (
         <header className="header">
@@ -99,20 +139,76 @@ export function Header({ title, breadcrumbs }: HeaderProps) {
                 />
 
                 {/* Search Results Dropdown */}
-                {showSearchResults && searchQuery && (
-                    <div className="dropdown-menu left-0 right-0 mt-2 p-2">
-                        <div className="text-xs text-text-muted px-3 py-2 font-medium">
-                            TENANTS
-                        </div>
-                        <DropdownItem icon={<Users className="w-4 h-4" />}>
-                            John Smith - Unit A1
-                        </DropdownItem>
-                        <div className="text-xs text-text-muted px-3 py-2 font-medium mt-2">
-                            UNITS
-                        </div>
-                        <DropdownItem icon={<DoorOpen className="w-4 h-4" />}>
-                            Unit A1 - Sunset Flats
-                        </DropdownItem>
+                {showSearchResults && searchQuery.length >= 2 && (
+                    <div className="dropdown-menu left-0 right-0 mt-2 p-2" style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                        {searching ? (
+                            <div className="text-center py-4 text-sm text-text-muted">Searching...</div>
+                        ) : !hasResults ? (
+                            <div className="text-center py-4 text-sm text-text-muted">No results found</div>
+                        ) : (
+                            <>
+                                {searchResults.tenants?.length > 0 && (
+                                    <>
+                                        <div className="text-xs text-text-muted px-3 py-2 font-medium">TENANTS</div>
+                                        {searchResults.tenants.map((t: any) => (
+                                            <DropdownItem key={t.id} icon={<Users className="w-4 h-4" />}>
+                                                <Link href={`/tenants`} className="block w-full">
+                                                    {t.fullName} — {t.user?.email}
+                                                </Link>
+                                            </DropdownItem>
+                                        ))}
+                                    </>
+                                )}
+                                {searchResults.units?.length > 0 && (
+                                    <>
+                                        <div className="text-xs text-text-muted px-3 py-2 font-medium mt-2">UNITS</div>
+                                        {searchResults.units.map((u: any) => (
+                                            <DropdownItem key={u.id} icon={<DoorOpen className="w-4 h-4" />}>
+                                                <Link href={`/units`} className="block w-full">
+                                                    Unit {u.unitNumber} — {u.property?.name} ({u.status})
+                                                </Link>
+                                            </DropdownItem>
+                                        ))}
+                                    </>
+                                )}
+                                {searchResults.leases?.length > 0 && (
+                                    <>
+                                        <div className="text-xs text-text-muted px-3 py-2 font-medium mt-2">LEASES</div>
+                                        {searchResults.leases.map((l: any) => (
+                                            <DropdownItem key={l.id} icon={<FileText className="w-4 h-4" />}>
+                                                <Link href={`/leases`} className="block w-full">
+                                                    {l.tenant?.fullName} — Unit {l.unit?.unitNumber} ({l.status})
+                                                </Link>
+                                            </DropdownItem>
+                                        ))}
+                                    </>
+                                )}
+                                {searchResults.payments?.length > 0 && (
+                                    <>
+                                        <div className="text-xs text-text-muted px-3 py-2 font-medium mt-2">PAYMENTS</div>
+                                        {searchResults.payments.map((p: any) => (
+                                            <DropdownItem key={p.id} icon={<CreditCard className="w-4 h-4" />}>
+                                                <Link href={`/payments`} className="block w-full">
+                                                    R{p.amount?.toLocaleString()} — {p.tenant?.fullName} ({p.reference})
+                                                </Link>
+                                            </DropdownItem>
+                                        ))}
+                                    </>
+                                )}
+                                {searchResults.maintenance?.length > 0 && (
+                                    <>
+                                        <div className="text-xs text-text-muted px-3 py-2 font-medium mt-2">MAINTENANCE</div>
+                                        {searchResults.maintenance.map((m: any) => (
+                                            <DropdownItem key={m.id} icon={<Wrench className="w-4 h-4" />}>
+                                                <Link href={`/maintenance`} className="block w-full">
+                                                    {m.title} — Unit {m.unit?.unitNumber} ({m.status})
+                                                </Link>
+                                            </DropdownItem>
+                                        ))}
+                                    </>
+                                )}
+                            </>
+                        )}
                     </div>
                 )}
             </div>

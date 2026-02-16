@@ -212,20 +212,21 @@ model PaymentAllocation {
 }
 
 model MaintenanceRequest {
-  id          String   @id @default(cuid())
-  unitId      String
-  unit        Unit     @relation(fields: [unitId], references: [id], onDelete: Cascade)
-  tenantId    String
-  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  title       String
-  description String
-  category    String   // PLUMBING, ELECTRICAL, HVAC, APPLIANCE, STRUCTURAL, OTHER
-  priority    String   @default("MEDIUM") // LOW, MEDIUM, HIGH, URGENT
-  status      String   @default("SUBMITTED") // SUBMITTED, IN_REVIEW, APPROVED, IN_PROGRESS, COMPLETED, REJECTED
-  attachments String   @default("[]") // JSON array of URLs
-  comments    Comment[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String    @id @default(cuid())
+  unitId        String
+  unit          Unit      @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  tenantId      String
+  tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  title         String
+  description   String
+  category      String   // PLUMBING, ELECTRICAL, HVAC, APPLIANCE, STRUCTURAL, OTHER
+  priority      String   @default("MEDIUM") // LOW, MEDIUM, HIGH, URGENT
+  status        String   @default("SUBMITTED") // SUBMITTED, IN_REVIEW, APPROVED, IN_PROGRESS, COMPLETED, REJECTED
+  scheduledDate DateTime?
+  attachments   String   @default("[]") // JSON array of URLs
+  comments      Comment[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 
 model Comment {

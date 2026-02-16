@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
 
         const userId = (session.user as { id?: string }).id;
         const body = await request.json();
-        const { unitId, tenantId, title, description, category, priority } = body;
+        const { unitId, tenantId, title, description, category, priority, scheduledDate } = body;
 
         if (!unitId || !title || !category) {
             return NextResponse.json({ success: false, error: 'Missing required fields' }, { status: 400 });
@@ -86,14 +86,20 @@ export async function POST(request: NextRequest) {
                 category: category.toUpperCase(),
                 priority: priority?.toUpperCase() || 'MEDIUM',
                 status: 'SUBMITTED',
+                scheduledDate: scheduledDate ? new Date(scheduledDate) : null,
                 attachments: '[]',
             },
+        });
+
+        // Get tenant info for notifications
+        const tenant = await prisma.tenant.findUnique({
+            where: { id: resolvedTenantId },
+            include: { user: true },
         });
 
         // Send email notification to landlord
         const landlordEmail = unit.property.landlord?.email;
         if (landlordEmail) {
-            const tenant = await prisma.tenant.findUnique({ where: { id: resolvedTenantId } });
             await notifications.sendEmail({
                 to: landlordEmail,
                 subject: `New Maintenance Request - ${title}`,
@@ -108,8 +114,50 @@ export async function POST(request: NextRequest) {
                         <tr><td style="padding: 8px; font-weight: bold;">Unit:</td><td style="padding: 8px;">${unit.unitNumber}</td></tr>
                         <tr><td style="padding: 8px; font-weight: bold;">Tenant:</td><td style="padding: 8px;">${tenant?.fullName || 'Unknown'}</td></tr>
                         ${description ? `<tr><td style="padding: 8px; font-weight: bold;">Description:</td><td style="padding: 8px;">${description}</td></tr>` : ''}
+                        ${scheduledDate ? `<tr><td style="padding: 8px; font-weight: bold;">Scheduled:</td><td style="padding: 8px;">${new Date(scheduledDate).toLocaleDateString('en-ZA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td></tr>` : ''}
                     </table>
                     <p style="margin-top: 16px;">Log in to RentPilot to review and respond to this request.</p>
+                `,
+            });
+        }
+
+        // Notify tenant about scheduled maintenance
+        if (tenant && scheduledDate) {
+            const formattedDate = new Date(scheduledDate).toLocaleDateString('en-ZA', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+            });
+
+            await prisma.notification.create({
+                data: {
+                    userId: tenant.userId,
+                    type: 'MAINTENANCE_UPDATE',
+                    title: 'Maintenance Scheduled',
+                    message: `Maintenance has been scheduled for ${unit.property.name} - Unit ${unit.unitNumber} on ${formattedDate}. Issue: ${title}`,
+                    actionUrl: '/tenant',
+                },
+            });
+
+            await notifications.sendEmail({
+                to: tenant.user.email,
+                subject: `Maintenance Scheduled - ${unit.property.name} Unit ${unit.unitNumber}`,
+                html: `
+                    <h1>Maintenance Scheduled</h1>
+                    <p>Dear ${tenant.fullName},</p>
+                    <p>Maintenance has been scheduled for your unit:</p>
+                    <table style="border-collapse: collapse; width: 100%;">
+                        <tr><td style="padding: 8px; font-weight: bold;">Issue:</td><td style="padding: 8px;">${title}</td></tr>
+                        <tr><td style="padding: 8px; font-weight: bold;">Property:</td><td style="padding: 8px;">${unit.property.name}</td></tr>
+                        <tr><td style="padding: 8px; font-weight: bold;">Unit:</td><td style="padding: 8px;">${unit.unitNumber}</td></tr>
+                        <tr><td style="padding: 8px; font-weight: bold;">Date:</td><td style="padding: 8px;">${formattedDate}</td></tr>
+                        <tr><td style="padding: 8px; font-weight: bold;">Category:</td><td style="padding: 8px;">${category}</td></tr>
+                    </table>
+                    <p>Please ensure the unit is accessible at the scheduled time.</p>
+                    <p>Thank you,<br/>Your Landlord</p>
                 `,
             });
         }

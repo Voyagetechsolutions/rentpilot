@@ -19,6 +19,7 @@ import {
     Download,
     Wrench,
     Loader2,
+    Calendar,
 } from 'lucide-react';
 
 const statusOptions = [
@@ -66,6 +67,7 @@ export default function MaintenancePage() {
         description: '',
         category: 'OTHER',
         priority: 'MEDIUM',
+        scheduledDate: '',
     });
 
     // Auto-open modal if action=new in URL
@@ -81,7 +83,7 @@ export default function MaintenancePage() {
         url: '/api/maintenance',
         onSuccess: () => {
             setShowAddModal(false);
-            setFormData({ unitId: '', title: '', description: '', category: 'OTHER', priority: 'MEDIUM' });
+            setFormData({ unitId: '', title: '', description: '', category: 'OTHER', priority: 'MEDIUM', scheduledDate: '' });
             refetch();
         },
     });
@@ -152,6 +154,18 @@ export default function MaintenancePage() {
                 <Badge variant={row.status.toLowerCase().replace('_', '-') as 'submitted' | 'in-review' | 'in-progress' | 'completed'}>
                     {row.status.replace('_', ' ')}
                 </Badge>
+            )
+        },
+        {
+            key: 'scheduledDate',
+            header: 'Scheduled',
+            render: (row: NonNullable<typeof tickets>[0]) => (
+                row.scheduledDate ? (
+                    <div className="flex items-center gap-1 text-sm">
+                        <Calendar className="w-3 h-3 text-text-muted" />
+                        {new Date(row.scheduledDate).toLocaleDateString()}
+                    </div>
+                ) : <span className="text-text-muted">—</span>
             )
         },
         {
@@ -275,6 +289,12 @@ export default function MaintenancePage() {
                             onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
                         />
                     </div>
+                    <Input
+                        label="Scheduled Date (optional)"
+                        type="datetime-local"
+                        value={formData.scheduledDate}
+                        onChange={(e) => setFormData({ ...formData, scheduledDate: e.target.value })}
+                    />
                     <div>
                         <label className="form-label">Description</label>
                         <textarea

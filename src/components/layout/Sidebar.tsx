@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -9,7 +9,6 @@ import {
     DoorOpen,
     Users,
     FileText,
-    Receipt,
     CreditCard,
     Wrench,
     FolderOpen,
@@ -28,7 +27,7 @@ const mainNavItems = [
     { icon: DoorOpen, label: 'Units', href: '/units' },
     { icon: Users, label: 'Tenants', href: '/tenants' },
     { icon: FileText, label: 'Leases', href: '/leases' },
-    { icon: Receipt, label: 'Rent Ledger', href: '/rent-ledger' },
+
     { icon: CreditCard, label: 'Payments', href: '/payments' },
     { icon: Wallet, label: 'Deposits', href: '/deposits' },
     { icon: Wrench, label: 'Maintenance', href: '/maintenance' },
@@ -41,23 +40,31 @@ const mainNavItems = [
 
 export function Sidebar() {
     const pathname = usePathname();
+    const [unitCount, setUnitCount] = useState({ total: 0, occupied: 0 });
+
+    useEffect(() => {
+        fetch('/api/units')
+            .then(res => res.json())
+            .then(result => {
+                if (result.success && Array.isArray(result.data)) {
+                    const total = result.data.length;
+                    const occupied = result.data.filter((u: { status: string }) => u.status === 'OCCUPIED').length;
+                    setUnitCount({ total, occupied });
+                }
+            })
+            .catch(() => { /* silent fail */ });
+    }, []);
 
     return (
         <aside className="sidebar">
             {/* Logo */}
             <div className="sidebar-header">
-                <Link href="/dashboard" className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-teal-600 flex items-center justify-center">
-                        <span className="text-white font-bold text-lg">N</span>
+                <Link href="/dashboard" className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+                        <span className="text-white font-bold text-sm">R</span>
                     </div>
-                    <div>
-                        <div className="font-bold text-lg">Nook</div>
-                        <div className="text-xs text-text-muted">My Properties</div>
-                    </div>
+                    <span className="text-lg font-bold">RentPilot</span>
                 </Link>
-                <div className="mt-2">
-                    <span className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded-full">Free Plan</span>
-                </div>
             </div>
 
             {/* Navigation */}
@@ -85,9 +92,9 @@ export function Sidebar() {
             <div className="sidebar-footer">
                 <div className="mb-4 p-3 bg-gray-50 rounded-lg">
                     <div className="text-sm font-medium mb-1">Units Used</div>
-                    <div className="text-2xl font-bold">0<span className="text-sm text-text-muted font-normal">/20</span></div>
+                    <div className="text-2xl font-bold">{unitCount.occupied}<span className="text-sm text-text-muted font-normal">/{unitCount.total}</span></div>
                     <div className="w-full h-2 bg-gray-200 rounded-full mt-2">
-                        <div className="h-full bg-primary rounded-full" style={{ width: '0%' }}></div>
+                        <div className="h-full bg-primary rounded-full" style={{ width: unitCount.total > 0 ? `${(unitCount.occupied / unitCount.total) * 100}%` : '0%' }}></div>
                     </div>
                 </div>
                 <Link href="/settings/billing" className="btn btn-secondary w-full justify-center mb-3">

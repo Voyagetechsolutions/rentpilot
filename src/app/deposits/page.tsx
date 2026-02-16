@@ -420,7 +420,37 @@ export default function DepositsPage() {
                 onClose={() => setShowDeductionModal(false)}
                 title="Add Deduction"
             >
-                <form className="space-y-4">
+                <form onSubmit={async (e) => {
+                    e.preventDefault();
+                    if (!selectedDeposit || !deductionData.description || !deductionData.amount) return;
+                    setCreating(true);
+                    try {
+                        const response = await fetch('/api/deposits/deductions', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                depositId: selectedDeposit.id,
+                                reason: deductionData.reason,
+                                description: deductionData.description,
+                                amount: parseFloat(deductionData.amount),
+                            }),
+                        });
+                        const result = await response.json();
+                        if (result.success) {
+                            setShowDeductionModal(false);
+                            setDeductionData({ reason: 'DAMAGE', description: '', amount: '' });
+                            setSelectedDeposit(null);
+                            fetchDeposits();
+                        } else {
+                            alert(result.error || 'Failed to add deduction');
+                        }
+                    } catch (error) {
+                        console.error('Error adding deduction:', error);
+                        alert('Failed to add deduction');
+                    } finally {
+                        setCreating(false);
+                    }
+                }} className="space-y-4">
                     <Select
                         label="Reason *"
                         value={deductionData.reason}
@@ -440,6 +470,7 @@ export default function DepositsPage() {
                         value={deductionData.description}
                         onChange={(e) => setDeductionData({ ...deductionData, description: e.target.value })}
                         placeholder="Describe the deduction..."
+                        required
                     />
 
                     <Input
@@ -447,14 +478,21 @@ export default function DepositsPage() {
                         type="number"
                         value={deductionData.amount}
                         onChange={(e) => setDeductionData({ ...deductionData, amount: e.target.value })}
+                        required
                     />
+
+                    {selectedDeposit && (
+                        <div className="p-3 bg-blue-50 rounded-lg text-sm text-blue-800">
+                            <strong>Available balance:</strong> R{(selectedDeposit.amount + selectedDeposit.accruedInterest - selectedDeposit.deductions.reduce((s, d) => s + d.amount, 0)).toFixed(2)}
+                        </div>
+                    )}
 
                     <div className="flex justify-end gap-3 pt-4">
                         <Button type="button" variant="secondary" onClick={() => setShowDeductionModal(false)}>
                             Cancel
                         </Button>
-                        <Button type="submit">
-                            Add Deduction
+                        <Button type="submit" disabled={creating}>
+                            {creating ? 'Adding...' : 'Add Deduction'}
                         </Button>
                     </div>
                 </form>

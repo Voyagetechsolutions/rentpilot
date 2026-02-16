@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
+import { notifications } from '@/lib/notifications';
 
 // GET /api/inspections - List all inspections
 export async function GET(request: NextRequest) {
@@ -89,6 +90,7 @@ export async function POST(request: NextRequest) {
                 id: unitId,
                 property: { landlordId: session.user.id },
             },
+            include: { property: true },
         });
 
         if (!unit) {
@@ -138,11 +140,60 @@ export async function POST(request: NextRequest) {
                     include: { property: true },
                 },
                 lease: {
-                    include: { tenant: true },
+                    include: { tenant: { include: { user: true } } },
                 },
                 items: true,
             },
         });
+
+        // Notify tenant if a lease is linked
+        if (inspection.lease?.tenant) {
+            const tenant = inspection.lease.tenant;
+            const formattedDate = new Date(scheduledDate).toLocaleDateString('en-ZA', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+            });
+            const typeLabels: Record<string, string> = {
+                MOVE_IN: 'Move-In',
+                PERIODIC: 'Periodic',
+                MOVE_OUT: 'Move-Out',
+            };
+
+            // DB Notification
+            await prisma.notification.create({
+                data: {
+                    userId: tenant.userId,
+                    type: 'INSPECTION_SCHEDULED',
+                    title: `${typeLabels[type] || type} Inspection Scheduled`,
+                    message: `An inspection has been scheduled for ${unit.property.name} - Unit ${unit.unitNumber} on ${formattedDate}.${notes ? ` Notes: ${notes}` : ''}`,
+                    actionUrl: '/tenant',
+                },
+            });
+
+            // Email Notification
+            await notifications.sendEmail({
+                to: tenant.user.email,
+                subject: `Inspection Scheduled - ${unit.property.name} Unit ${unit.unitNumber}`,
+                html: `
+                    <h1>${typeLabels[type] || type} Inspection Scheduled</h1>
+                    <p>Dear ${tenant.fullName},</p>
+                    <p>An inspection has been scheduled for your unit:</p>
+                    <table style="border-collapse: collapse; width: 100%;">
+                        <tr><td style="padding: 8px; font-weight: bold;">Property:</td><td style="padding: 8px;">${unit.property.name}</td></tr>
+                        <tr><td style="padding: 8px; font-weight: bold;">Unit:</td><td style="padding: 8px;">${unit.unitNumber}</td></tr>
+                        <tr><td style="padding: 8px; font-weight: bold;">Type:</td><td style="padding: 8px;">${typeLabels[type] || type}</td></tr>
+                        <tr><td style="padding: 8px; font-weight: bold;">Date:</td><td style="padding: 8px;">${formattedDate}</td></tr>
+                        ${notes ? `<tr><td style="padding: 8px; font-weight: bold;">Notes:</td><td style="padding: 8px;">${notes}</td></tr>` : ''}
+                    </table>
+                    <p>Please ensure the unit is accessible at the scheduled time.</p>
+                    <p>Thank you,<br/>The Landlord</p>
+                `,
+            });
+        }
 
         return NextResponse.json({ success: true, data: inspection }, { status: 201 });
     } catch (error) {
