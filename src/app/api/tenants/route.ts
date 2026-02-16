@@ -304,12 +304,22 @@ export async function DELETE(request: NextRequest) {
                 data: { status: 'CANCELLED' },
             });
 
-            // 4. Delete tenant record — cascades to payments, maintenance, onlinePayments, screening, leases
+            // 4. Delete transaction ledger records (no cascade relation configured)
+            await tx.transactionLedger.deleteMany({
+                where: { tenantId: tenantId },
+            });
+
+            // 5. Delete notifications for the tenant's user
+            await tx.notification.deleteMany({
+                where: { userId: tenantUserId },
+            });
+
+            // 6. Delete tenant record — cascades to payments, maintenance, onlinePayments, screening, leases
             await tx.tenant.delete({
                 where: { id: tenantId },
             });
 
-            // 5. Delete the linked User record if they only have a TENANT role
+            // 7. Delete the linked User record if they only have a TENANT role
             if (tenantUserRole === 'TENANT') {
                 // First clean up user-related records that may not cascade
                 await tx.activityLog.deleteMany({
@@ -320,7 +330,7 @@ export async function DELETE(request: NextRequest) {
                 });
             }
 
-            // 6. Log the removal activity (using landlord's userId)
+            // 8. Log the removal activity (using landlord's userId)
             await tx.activityLog.create({
                 data: {
                     userId,
