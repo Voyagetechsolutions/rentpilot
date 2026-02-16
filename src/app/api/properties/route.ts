@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { getCached, setCache, invalidateCache } from '@/lib/cache';
+import { checkPlanLimits } from '@/lib/planEnforcement';
 
 // GET /api/properties - List all properties for authenticated user
 export async function GET() {
@@ -73,6 +74,13 @@ export async function POST(request: NextRequest) {
         }
 
         const userId = (session.user as { id?: string }).id;
+
+        // Check plan limits before creating property
+        const limitError = await checkPlanLimits(userId!, 'addProperty');
+        if (limitError) {
+            return limitError;
+        }
+
         const body = await request.json();
         const { name, address, city, country } = body;
 

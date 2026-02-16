@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { invalidateCache } from '@/lib/cache';
+import { checkPlanLimits } from '@/lib/planEnforcement';
 
 // GET /api/units - List all units for authenticated user's properties
 export async function GET(request: NextRequest) {
@@ -70,6 +71,13 @@ export async function POST(request: NextRequest) {
         }
 
         const userId = (session.user as { id?: string }).id;
+
+        // Check plan limits before creating unit
+        const limitError = await checkPlanLimits(userId!, 'addUnit');
+        if (limitError) {
+            return limitError;
+        }
+
         const body = await request.json();
         const { unitNumber, propertyId, bedrooms, bathrooms, rentAmount } = body;
 

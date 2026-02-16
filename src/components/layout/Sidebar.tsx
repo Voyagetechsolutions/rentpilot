@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -17,9 +17,9 @@ import {
     Zap,
     BarChart3,
     Settings,
-    HelpCircle,
     ArrowUpCircle,
 } from 'lucide-react';
+import { PricingModal } from '@/components/ui/PricingModal';
 
 const mainNavItems = [
     { icon: LayoutDashboard, label: 'Overview', href: '/dashboard' },
@@ -40,72 +40,56 @@ const mainNavItems = [
 
 export function Sidebar() {
     const pathname = usePathname();
-    const [unitCount, setUnitCount] = useState({ total: 0, occupied: 0 });
-
-    useEffect(() => {
-        fetch('/api/units')
-            .then(res => res.json())
-            .then(result => {
-                if (result.success && Array.isArray(result.data)) {
-                    const total = result.data.length;
-                    const occupied = result.data.filter((u: { status: string }) => u.status === 'OCCUPIED').length;
-                    setUnitCount({ total, occupied });
-                }
-            })
-            .catch(() => { /* silent fail */ });
-    }, []);
+    const [showPricing, setShowPricing] = useState(false);
 
     return (
-        <aside className="sidebar">
-            {/* Logo */}
-            <div className="sidebar-header">
-                <Link href="/dashboard" className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-                        <span className="text-white font-bold text-sm">R</span>
-                    </div>
-                    <span className="text-lg font-bold">RentPilot</span>
-                </Link>
-            </div>
-
-            {/* Navigation */}
-            <nav className="sidebar-nav">
-                <ul className="space-y-1">
-                    {mainNavItems.map((item) => {
-                        const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
-                        const Icon = item.icon;
-                        return (
-                            <li key={item.href}>
-                                <Link
-                                    href={item.href}
-                                    className={`nav-item ${isActive ? 'active' : ''}`}
-                                >
-                                    <Icon className="nav-icon" />
-                                    <span>{item.label}</span>
-                                </Link>
-                            </li>
-                        );
-                    })}
-                </ul>
-            </nav>
-
-            {/* Footer */}
-            <div className="sidebar-footer">
-                <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-                    <div className="text-sm font-medium mb-1">Units Used</div>
-                    <div className="text-2xl font-bold">{unitCount.occupied}<span className="text-sm text-text-muted font-normal">/{unitCount.total}</span></div>
-                    <div className="w-full h-2 bg-gray-200 rounded-full mt-2">
-                        <div className="h-full bg-primary rounded-full" style={{ width: unitCount.total > 0 ? `${(unitCount.occupied / unitCount.total) * 100}%` : '0%' }}></div>
-                    </div>
+        <>
+            <aside className="sidebar">
+                {/* Logo */}
+                <div className="sidebar-header">
+                    <Link href="/dashboard" className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+                            <span className="text-white font-bold text-sm">N</span>
+                        </div>
+                        <span className="text-lg font-bold">Nook</span>
+                    </Link>
                 </div>
-                <Link href="/settings/billing" className="btn btn-secondary w-full justify-center mb-3">
-                    <ArrowUpCircle className="w-4 h-4" />
-                    Upgrade Plan
-                </Link>
-                <Link href="/help" className="nav-item text-text-muted">
-                    <HelpCircle className="nav-icon" />
-                    <span>Help & Support</span>
-                </Link>
-            </div>
-        </aside>
+
+                {/* Navigation */}
+                <nav className="sidebar-nav">
+                    <ul className="space-y-1">
+                        {mainNavItems.map((item) => {
+                            const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+                            const Icon = item.icon;
+                            return (
+                                <li key={item.href}>
+                                    <Link
+                                        href={item.href}
+                                        className={`nav-item ${isActive ? 'active' : ''}`}
+                                    >
+                                        <Icon className="nav-icon" />
+                                        <span>{item.label}</span>
+                                    </Link>
+                                </li>
+                            );
+                        })}
+                    </ul>
+                </nav>
+
+                {/* Footer */}
+                <div className="sidebar-footer">
+                    <button
+                        onClick={() => setShowPricing(true)}
+                        className="btn btn-primary w-full justify-center"
+                    >
+                        <ArrowUpCircle className="w-4 h-4" />
+                        Upgrade Plan
+                    </button>
+                </div>
+            </aside>
+
+            {/* Pricing Modal */}
+            <PricingModal isOpen={showPricing} onClose={() => setShowPricing(false)} />
+        </>
     );
 }

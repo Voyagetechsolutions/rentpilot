@@ -31,6 +31,77 @@ model User {
   tenantProfile Tenant?
   documents     Document[] @relation("UploadedBy")
   settings      UserSettings?
+  subscription  Subscription?
+}
+
+// ========================
+// Subscription & Billing
+// ========================
+
+model Subscription {
+  id                String    @id @default(cuid())
+  userId            String    @unique
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Plan Details
+  plan              String    @default("STARTER") // STARTER, GROWTH, PRO, ENTERPRISE
+  status            String    @default("ACTIVE") // ACTIVE, CANCELLED, SUSPENDED, TRIAL, EXPIRED
+
+  // Billing
+  monthlyPrice      Int       @default(599) // in cents/rands
+  billingCycle      String    @default("MONTHLY") // MONTHLY, YEARLY
+
+  // Dates
+  startDate         DateTime  @default(now())
+  endDate           DateTime?
+  trialEndsAt       DateTime?
+  cancelledAt       DateTime?
+
+  // Usage Limits (based on plan)
+  maxUnits          Int       @default(10)
+  maxProperties     Int       @default(5)
+
+  // Features
+  hasAutomation     Boolean   @default(false)
+  hasAdvancedFinance Boolean  @default(false)
+  hasApiAccess      Boolean   @default(false)
+  hasPrioritySupport Boolean  @default(false)
+  hasCustomIntegrations Boolean @default(false)
+
+  // Tracking
+  unitsUsed         Int       @default(0)
+  propertiesUsed    Int       @default(0)
+
+  // Admin Notes
+  notes             String?
+  changedBy         String?   // Admin who last changed the subscription
+  changedAt         DateTime?
+
+  // History
+  history           SubscriptionHistory[]
+
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+}
+
+model SubscriptionHistory {
+  id              String       @id @default(cuid())
+  subscriptionId  String
+  subscription    Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  // Change Details
+  action          String       // CREATED, UPGRADED, DOWNGRADED, CANCELLED, REACTIVATED, SUSPENDED
+  previousPlan    String?
+  newPlan         String
+  previousPrice   Int?
+  newPrice        Int
+
+  // Who made the change
+  changedBy       String       // Admin user ID or 'SYSTEM'
+  changedByName   String?      // Admin name for display
+  reason          String?      // Reason for change
+
+  createdAt       DateTime     @default(now())
 }
 
 model UserSettings {

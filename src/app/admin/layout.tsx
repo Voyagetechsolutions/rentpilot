@@ -15,6 +15,7 @@ import {
     LogOut,
     Shield,
     ChevronRight,
+    Crown,
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -26,6 +27,7 @@ const adminNavItems = [
     { icon: Users, label: 'Users', href: '/admin/users' },
     { icon: Building2, label: 'Properties', href: '/admin/properties' },
     { icon: CreditCard, label: 'Payments', href: '/admin/payments' },
+    { icon: Crown, label: 'Subscriptions', href: '/admin/subscriptions' },
     { icon: FileText, label: 'Leases', href: '/admin/leases' },
     { icon: Activity, label: 'Activity Logs', href: '/admin/logs' },
     { icon: Settings, label: 'Settings', href: '/admin/settings' },
